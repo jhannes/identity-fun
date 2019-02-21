@@ -44,6 +44,7 @@ public class IdentityServer {
         webAppContext.getInitParams().put("org.eclipse.jetty.servlet.Default.useFileMappedBuffer", "false");
 
         webAppContext.addServlet(new ServletHolder(new IdentityServlet()), "/id/*");
+        webAppContext.addServlet(new ServletHolder(new UserServlet()), "/user");
 
 
         return webAppContext;

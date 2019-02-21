@@ -7,14 +7,22 @@
 <body>
     <h1>A demonstration of Oauth2 and OpenID Connect</h1>
 
-    <div id="userInfo"></div>
 
     <ul>
-|        <li><a href="/id/google/authenticate">Login with Google</a></li>
+        <li><a href="/id/google/authenticate">Login with Google</a></li>
         <li><a href="/id/microsoft/authenticate">Login with Microsoft</a></li>
         <li><a href="/id/slack/authenticate">Login with Slack</a></li>
         <li><a href="/id/idporten/authenticate">Login with ID-porten</a></li>
     </ul>
 
+    <pre id="userInfo"></pre>
+
+<script>
+function displayUser(user) {
+    console.log(user);
+    document.getElementById("userInfo").innerHTML = JSON.stringify(user, null, 2);
+}
+</script>
+<script src="/user"></script>
 </body>
 </html>

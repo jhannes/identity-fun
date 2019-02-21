@@ -1,5 +1,7 @@
 package com.johannesbrodwall.identity;
 
+import org.jsonbuddy.JsonObject;
+import org.jsonbuddy.parse.JsonParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,7 +112,11 @@ public class IdentityServlet extends HttpServlet {
                             + "<div><a href='/'>Front page</a></div>"
                             + "</html>");
         } else if (action.equals("session")) {
-            String tokenResponse = (String) req.getSession().getAttribute("token_response");
+            JsonObject tokenResponse = JsonParser.parseToObject((String) req.getSession().getAttribute("token_response"));
+
+            UserSession session = UserSession.getFromSession(req);
+            session.addTokenResponse(provider, tokenResponse);
+
             resp.sendRedirect("/");
         } else {
             resp.sendError(404);

@@ -31,5 +31,10 @@
             <artifactId>logevents</artifactId>
             <version>0.1.11-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>org.jsonbuddy</groupId>
+            <artifactId>jsonbuddy</artifactId>
+            <version>0.14.1</version>
+        </dependency>
     </dependencies>
 </project>
