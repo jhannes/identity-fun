@@ -43,7 +43,7 @@ public class IdentityServer {
         webAppContext.setBaseResource(Resource.newClassPathResource("/webapp-identity"));
         webAppContext.getInitParams().put("org.eclipse.jetty.servlet.Default.useFileMappedBuffer", "false");
 
-        webAppContext.addServlet(new ServletHolder(new IdentityServlet()), "/id/*");
+        webAppContext.addServlet(new ServletHolder(new IdentityServlet("https://accounts.google.com/.well-known/openid-configuration")), "/id/google/*");
         webAppContext.addServlet(new ServletHolder(new UserServlet()), "/user");
 
 

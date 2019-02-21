@@ -8,10 +8,7 @@ import org.slf4j.LoggerFactory;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -22,17 +19,31 @@ public class IdentityServlet extends HttpServlet {
 
     private static Logger logger = LoggerFactory.getLogger(IdentityServlet.class);
 
+    private String clientId = "716142064442-mj5uo5olbrqdau8qu5gl47emdmb50uil.apps.googleusercontent.com";
+    private String clientSecret = "W5CEYkxFQ7jy9m2N9gYFr-fz";
+    private String redirectUri = "http://localhost:8080/id/google/oauth2callback";
+
+    private String openidConfigurationUrl;
+    private String authorizationEndpoint = "https://accounts.google.com/o/oauth2/v2/auth";
+    private String tokenEndpoint = "https://oauth2.googleapis.com/token";
+    private String grantType = "authorization_code";
+    private String responseType = "code";
+    private String scope = "openid+profile+email";
+
+    public IdentityServlet(String openidConfigurationUrl) {
+        this.openidConfigurationUrl = openidConfigurationUrl;
+    }
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String[] pathParts = req.getPathInfo().split("/");
 
-        if (pathParts.length < 3) {
+        if (pathParts.length < 2) {
             resp.sendError(404);
             return;
         }
 
-        String provider = pathParts[1];
-        String action = pathParts[2];
+        String action = pathParts[1];
 
         if (action.equals("authenticate")) {
             String loginState = UUID.randomUUID().toString();
@@ -45,22 +56,10 @@ public class IdentityServlet extends HttpServlet {
             logger.debug("oauth2callback with response: {}", req.getQueryString());
             logger.debug("oauth2callback parameters {}", Collections.list(req.getParameterNames()));
 
-            String openidConfigurationUrl = "https://accounts.google.com/.well-known/openid-configuration";
-
-            String clientId = "716142064442-mj5uo5olbrqdau8qu5gl47emdmb50uil.apps.googleusercontent.com";
-            String clientSecret = "W5CEYkxFQ7jy9m2N9gYFr-fz";
-
-            String tokenEndpoint = "https://accounts.google.com/o/oauth2/v2/token";
-            String redirectUri = "http://localhost:8080/id/google/oauth2callback";
-
             String code = req.getParameter("code");
-
             String state = req.getParameter("state");
-
             String scope = req.getParameter("scope");
 
-
-            String grantType = "authorization_code";
             String payload = "client_id=" + clientId
                     + "&" + "client_secret=" + "xxxxxxx"
                     + "&" + "redirect_uri=" + redirectUri
@@ -69,15 +68,12 @@ public class IdentityServlet extends HttpServlet {
 
             resp.setContentType("text/html");
 
-            resp.getWriter().write("<a href='/id/" + provider + "/token?" + payload + "'>POST to " + tokenEndpoint + " " + payload + "</a>");
+            resp.getWriter().write("<a href='" + req.getServletPath() + "/token?" + payload + "'>POST to " + tokenEndpoint + " " + payload + "</a>");
 
         } else if (action.equals("token")) {
-            URL tokenEndpoint = new URL("https://oauth2.googleapis.com/token");
-            String clientSecret = "W5CEYkxFQ7jy9m2N9gYFr-fz";
-
             String payload = req.getQueryString();
             payload = payload.replace("xxxxxxx", clientSecret);
-            HttpURLConnection connection = (HttpURLConnection) tokenEndpoint.openConnection();
+            HttpURLConnection connection = (HttpURLConnection) new URL(tokenEndpoint).openConnection();
             connection.setDoOutput(true);
             connection.setDoInput(true);
 
@@ -85,37 +81,26 @@ public class IdentityServlet extends HttpServlet {
                 outputStream.write(payload.getBytes());
             }
 
-
-            StringBuilder response = new StringBuilder();
+            String response;
             if (connection.getResponseCode() < 400) {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
-                    int c;
-                    while ((c = reader.read()) != -1) {
-                        response.append((char) c);
-                    }
-                }
+                response = toString(connection.getInputStream());
             } else {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getErrorStream()))) {
-                    int c;
-                    while ((c = reader.read()) != -1) {
-                        response.append((char) c);
-                    }
-                }
+                response = toString(connection.getErrorStream());
             }
 
-            req.getSession().setAttribute("token_response", response.toString());
+            req.getSession().setAttribute("token_response", response);
             resp.setContentType("text/html");
             resp.getWriter().write("<html>"
                             + "<h1>Token response</h1>"
-                            + "<pre>" + response.toString() + "</pre>"
-                            + "<div><a href='/id/" + provider + "/session'>Create session</a></div>"
+                            + "<pre>" + response + "</pre>"
+                            + "<div><a href='" + req.getServletPath() + "/session'>Create session</a></div>"
                             + "<div><a href='/'>Front page</a></div>"
                             + "</html>");
         } else if (action.equals("session")) {
             JsonObject tokenResponse = JsonParser.parseToObject((String) req.getSession().getAttribute("token_response"));
 
             UserSession session = UserSession.getFromSession(req);
-            session.addTokenResponse(provider, tokenResponse);
+            session.addTokenResponse(openidConfigurationUrl, tokenResponse);
 
             resp.sendRedirect("/");
         } else {
@@ -123,18 +108,18 @@ public class IdentityServlet extends HttpServlet {
         }
     }
 
+    private String toString(InputStream inputStream) throws IOException {
+        StringBuilder responseBuffer = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+            int c;
+            while ((c = reader.read()) != -1) {
+                responseBuffer.append((char) c);
+            }
+        }
+        return responseBuffer.toString();
+    }
+
     private URL generateAuthenticationRequest(String loginState) throws MalformedURLException {
-        String openidConfigurationUrl = "https://accounts.google.com/.well-known/openid-configuration";
-
-        String clientId = "716142064442-mj5uo5olbrqdau8qu5gl47emdmb50uil.apps.googleusercontent.com";
-        String clientSecret = "W5CEYkxFQ7jy9m2N9gYFr-fz";
-
-        String authorizationEndpoint = "https://accounts.google.com/o/oauth2/v2/auth";
-
-        String redirectUri = "http://localhost:8080/id/google/oauth2callback";
-        String responseType = "code";
-        String scope = "openid+profile+email";
-
         return new URL(authorizationEndpoint + "?"
                 + "client_id=" + clientId + "&"
                 + "redirect_uri=" + redirectUri + "&"
