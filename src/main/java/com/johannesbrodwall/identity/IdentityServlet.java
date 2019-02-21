@@ -10,7 +10,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Collections;
 import java.util.UUID;
@@ -19,19 +18,24 @@ public class IdentityServlet extends HttpServlet {
 
     private static Logger logger = LoggerFactory.getLogger(IdentityServlet.class);
 
-    private String clientId = "716142064442-mj5uo5olbrqdau8qu5gl47emdmb50uil.apps.googleusercontent.com";
-    private String clientSecret = "W5CEYkxFQ7jy9m2N9gYFr-fz";
-    private String redirectUri = "http://localhost:8080/id/google/oauth2callback";
+    private String clientId;
+    private String clientSecret;
+    private String redirectUri;
 
     private String openidConfigurationUrl;
-    private String authorizationEndpoint = "https://accounts.google.com/o/oauth2/v2/auth";
-    private String tokenEndpoint = "https://oauth2.googleapis.com/token";
+    private String authorizationEndpoint;
+    private String tokenEndpoint;
     private String grantType = "authorization_code";
     private String responseType = "code";
-    private String scope = "openid+profile+email";
+    private String scope;
 
-    public IdentityServlet(String openidConfigurationUrl) {
-        this.openidConfigurationUrl = openidConfigurationUrl;
+    public IdentityServlet(String openIdIssuerUrl) throws IOException {
+        this.openidConfigurationUrl = openIdIssuerUrl;
+
+        OpenidConfiguration configuration = new OpenidConfiguration(openIdIssuerUrl);
+        this.authorizationEndpoint = configuration.getAuthorizationEndpoint();
+        this.tokenEndpoint = configuration.getTokenEndpoint();
+        this.scope = configuration.getScopesString();
     }
 
     @Override
@@ -44,68 +48,84 @@ public class IdentityServlet extends HttpServlet {
         }
 
         String action = pathParts[1];
-
         if (action.equals("authenticate")) {
-            String loginState = UUID.randomUUID().toString();
-            URL authenticationRequest = generateAuthenticationRequest(loginState);
-            req.getSession().setAttribute("loginState", loginState);
-
-            resp.setContentType("text/html");
-            resp.getWriter().write("<a href='" + authenticationRequest + "'>" + authenticationRequest + "</a>");
+            authenticate(req, resp);
         } else if (action.equals("oauth2callback")) {
-            logger.debug("oauth2callback with response: {}", req.getQueryString());
-            logger.debug("oauth2callback parameters {}", Collections.list(req.getParameterNames()));
-
-            String code = req.getParameter("code");
-            String state = req.getParameter("state");
-            String scope = req.getParameter("scope");
-
-            String payload = "client_id=" + clientId
-                    + "&" + "client_secret=" + "xxxxxxx"
-                    + "&" + "redirect_uri=" + redirectUri
-                    + "&" + "code=" + code
-                    + "&" + "grant_type=" + grantType;
-
-            resp.setContentType("text/html");
-
-            resp.getWriter().write("<a href='" + req.getServletPath() + "/token?" + payload + "'>POST to " + tokenEndpoint + " " + payload + "</a>");
-
+            oauth2callback(req, resp);
         } else if (action.equals("token")) {
-            String payload = req.getQueryString();
-            payload = payload.replace("xxxxxxx", clientSecret);
-            HttpURLConnection connection = (HttpURLConnection) new URL(tokenEndpoint).openConnection();
-            connection.setDoOutput(true);
-            connection.setDoInput(true);
-
-            try (OutputStream outputStream = connection.getOutputStream()) {
-                outputStream.write(payload.getBytes());
-            }
-
-            String response;
-            if (connection.getResponseCode() < 400) {
-                response = toString(connection.getInputStream());
-            } else {
-                response = toString(connection.getErrorStream());
-            }
-
-            req.getSession().setAttribute("token_response", response);
-            resp.setContentType("text/html");
-            resp.getWriter().write("<html>"
-                            + "<h1>Token response</h1>"
-                            + "<pre>" + response + "</pre>"
-                            + "<div><a href='" + req.getServletPath() + "/session'>Create session</a></div>"
-                            + "<div><a href='/'>Front page</a></div>"
-                            + "</html>");
+            getToken(req, resp);
         } else if (action.equals("session")) {
-            JsonObject tokenResponse = JsonParser.parseToObject((String) req.getSession().getAttribute("token_response"));
-
-            UserSession session = UserSession.getFromSession(req);
-            session.addTokenResponse(openidConfigurationUrl, tokenResponse);
-
-            resp.sendRedirect("/");
+            setupSession(req, resp);
         } else {
             resp.sendError(404);
         }
+    }
+
+    private void setupSession(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        JsonObject tokenResponse = JsonParser.parseToObject((String) req.getSession().getAttribute("token_response"));
+        UserSession session = UserSession.getFromSession(req);
+        session.addTokenResponse(openidConfigurationUrl, tokenResponse);
+        resp.sendRedirect("/");
+    }
+
+    private void getToken(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        String payload = req.getQueryString();
+        payload = payload.replace("xxxxxxx", clientSecret);
+        HttpURLConnection connection = (HttpURLConnection) new URL(tokenEndpoint).openConnection();
+        connection.setDoOutput(true);
+        connection.setDoInput(true);
+        try (OutputStream outputStream = connection.getOutputStream()) {
+            outputStream.write(payload.getBytes());
+        }
+
+        String response;
+        if (connection.getResponseCode() < 400) {
+            response = toString(connection.getInputStream());
+        } else {
+            response = toString(connection.getErrorStream());
+        }
+
+        req.getSession().setAttribute("token_response", response);
+        resp.setContentType("text/html");
+        resp.getWriter().write("<html>"
+                        + "<h1>Token response</h1>"
+                        + "<pre>" + response + "</pre>"
+                        + "<div><a href='" + req.getServletPath() + "/session'>Create session</a></div>"
+                        + "<div><a href='/'>Front page</a></div>"
+                        + "</html>");
+    }
+
+    private void oauth2callback(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        logger.debug("oauth2callback with response: {}", req.getQueryString());
+        logger.debug("oauth2callback parameters {}", Collections.list(req.getParameterNames()));
+
+        String code = req.getParameter("code");
+        String state = req.getParameter("state");
+        String scope = req.getParameter("scope");
+
+        String payload = "client_id=" + clientId
+                + "&" + "client_secret=" + "xxxxxxx"
+                + "&" + "redirect_uri=" + redirectUri
+                + "&" + "code=" + code
+                + "&" + "grant_type=" + grantType;
+
+        resp.setContentType("text/html");
+        resp.getWriter().write("<a href='" + req.getServletPath() + "/token?" + payload + "'>POST to " + tokenEndpoint + " " + payload + "</a>");
+    }
+
+    private void authenticate(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        String loginState = UUID.randomUUID().toString();
+        req.getSession().setAttribute("loginState", loginState);
+
+        URL authenticationRequest = new URL(authorizationEndpoint + "?"
+                + "client_id=" + clientId + "&"
+                + "redirect_uri=" + redirectUri + "&"
+                + "response_type=" + responseType + "&"
+                + "scope=" + scope + "&"
+                + "state=" + loginState);
+
+        resp.setContentType("text/html");
+        resp.getWriter().write("<a href='" + authenticationRequest + "'>" + authenticationRequest + "</a>");
     }
 
     private String toString(InputStream inputStream) throws IOException {
@@ -119,12 +139,15 @@ public class IdentityServlet extends HttpServlet {
         return responseBuffer.toString();
     }
 
-    private URL generateAuthenticationRequest(String loginState) throws MalformedURLException {
-        return new URL(authorizationEndpoint + "?"
-                + "client_id=" + clientId + "&"
-                + "redirect_uri=" + redirectUri + "&"
-                + "response_type=" + responseType + "&"
-                + "scope=" + scope + "&"
-                + "state=" + loginState);
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
+    }
+
+    public void setClientSecret(String clientSecret) {
+        this.clientSecret = clientSecret;
+    }
+
+    public void setRedirectUri(String redirectUri) {
+        this.redirectUri = redirectUri;
     }
 }

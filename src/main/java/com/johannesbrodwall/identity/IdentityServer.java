@@ -8,6 +8,8 @@ import org.eclipse.jetty.webapp.WebAppContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
 public class IdentityServer {
 
     private static Logger logger = LoggerFactory.getLogger(IdentityServer.class);
@@ -25,7 +27,7 @@ public class IdentityServer {
         logger.warn("Started {}", server.getURI());
     }
 
-    private void setupServer() {
+    private void setupServer() throws IOException {
         server.addConnector(createConnector());
         server.setHandler(createWebAppContext());
     }
@@ -37,16 +39,30 @@ public class IdentityServer {
         return connector;
     }
 
-    private WebAppContext createWebAppContext() {
+    private WebAppContext createWebAppContext() throws IOException {
         WebAppContext webAppContext = new WebAppContext();
         webAppContext.setContextPath("/");
         webAppContext.setBaseResource(Resource.newClassPathResource("/webapp-identity"));
         webAppContext.getInitParams().put("org.eclipse.jetty.servlet.Default.useFileMappedBuffer", "false");
 
-        webAppContext.addServlet(new ServletHolder(new IdentityServlet("https://accounts.google.com/.well-known/openid-configuration")), "/id/google/*");
+        webAppContext.addServlet(new ServletHolder(createGoogleIdProviderServlet()), "/id/google/*");
+        webAppContext.addServlet(new ServletHolder(createAzureIdProviderServlet()), "/id/microsoft/*");
         webAppContext.addServlet(new ServletHolder(new UserServlet()), "/user");
 
 
         return webAppContext;
+    }
+
+    private IdentityServlet createAzureIdProviderServlet() throws IOException {
+        IdentityServlet servlet = new IdentityServlet("https://login.microsoftonline.com/common");
+        return servlet;
+    }
+
+    private IdentityServlet createGoogleIdProviderServlet() throws IOException {
+        IdentityServlet servlet = new IdentityServlet("https://accounts.google.com");
+        servlet.setClientId("716142064442-mj5uo5olbrqdau8qu5gl47emdmb50uil.apps.googleusercontent.com");
+        servlet.setClientSecret("W5CEYkxFQ7jy9m2N9gYFr-fz");
+        servlet.setRedirectUri("http://localhost:8080/id/google/oauth2callback");
+        return servlet;
     }
 }
