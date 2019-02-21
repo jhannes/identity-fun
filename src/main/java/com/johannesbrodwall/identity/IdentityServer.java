@@ -55,6 +55,9 @@ public class IdentityServer {
 
     private IdentityServlet createAzureIdProviderServlet() throws IOException {
         IdentityServlet servlet = new IdentityServlet("https://login.microsoftonline.com/common");
+        servlet.setClientId("55a62cf9-3f20-47e0-b61d-51f835fd5945");
+        servlet.setClientSecret("[4_)p;XqZ)|V/ec#xl");
+        servlet.setRedirectUri("http://localhost:8080/id/microsoft/oauth2callback");
         return servlet;
     }
 
