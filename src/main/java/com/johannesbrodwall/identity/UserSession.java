@@ -37,7 +37,7 @@ public class UserSession {
         public IdProviderSession(JsonObject tokenResponse) {
             this.accessToken = tokenResponse.requiredString("access_token");
             this.refreshToken = tokenResponse.stringValue("refresh_token");
-            this.idToken = new JwtToken(tokenResponse.requiredString("id_token"));
+            this.idToken = new JwtToken(tokenResponse.requiredString("id_token"), true);
         }
 
         public Optional<String> getRefreshToken() {
