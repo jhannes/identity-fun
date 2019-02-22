@@ -53,16 +53,16 @@ public class IdentityServer {
         return webAppContext;
     }
 
-    private IdentityServlet createAzureIdProviderServlet() throws IOException {
-        IdentityServlet servlet = new IdentityServlet("https://login.microsoftonline.com/common");
+    private OpenIdConnectServlet createAzureIdProviderServlet() throws IOException {
+        OpenIdConnectServlet servlet = new OpenIdConnectServlet("https://login.microsoftonline.com/common");
         servlet.setClientId("55a62cf9-3f20-47e0-b61d-51f835fd5945");
         servlet.setClientSecret("[4_)p;XqZ)|V/ec#xl");
         servlet.setRedirectUri("http://localhost:8080/id/microsoft/oauth2callback");
         return servlet;
     }
 
-    private IdentityServlet createGoogleIdProviderServlet() throws IOException {
-        IdentityServlet servlet = new IdentityServlet("https://accounts.google.com");
+    private OpenIdConnectServlet createGoogleIdProviderServlet() throws IOException {
+        OpenIdConnectServlet servlet = new OpenIdConnectServlet("https://accounts.google.com");
         servlet.setClientId("716142064442-mj5uo5olbrqdau8qu5gl47emdmb50uil.apps.googleusercontent.com");
         servlet.setClientSecret("W5CEYkxFQ7jy9m2N9gYFr-fz");
         servlet.setRedirectUri("http://localhost:8080/id/google/oauth2callback");

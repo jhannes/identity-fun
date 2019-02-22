@@ -14,9 +14,9 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.UUID;
 
-public class IdentityServlet extends HttpServlet {
+public class OpenIdConnectServlet extends HttpServlet {
 
-    private static Logger logger = LoggerFactory.getLogger(IdentityServlet.class);
+    private static Logger logger = LoggerFactory.getLogger(OpenIdConnectServlet.class);
 
     private String clientId;
     private String clientSecret;
@@ -29,7 +29,7 @@ public class IdentityServlet extends HttpServlet {
     private String responseType = "code";
     private String scope;
 
-    public IdentityServlet(String openIdIssuerUrl) throws IOException {
+    public OpenIdConnectServlet(String openIdIssuerUrl) throws IOException {
         this.openidConfigurationUrl = openIdIssuerUrl;
 
         OpenidConfiguration configuration = new OpenidConfiguration(openIdIssuerUrl);
