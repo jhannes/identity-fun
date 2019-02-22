@@ -14,28 +14,24 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.UUID;
 
-public class OpenIdConnectServlet extends HttpServlet {
+public class Oauth2Servlet extends HttpServlet {
 
-    private static Logger logger = LoggerFactory.getLogger(OpenIdConnectServlet.class);
+    private static Logger logger = LoggerFactory.getLogger(Oauth2Servlet.class);
 
     private String clientId;
     private String clientSecret;
     private String redirectUri;
 
-    private String openidConfigurationUrl;
     private String authorizationEndpoint;
     private String tokenEndpoint;
     private String grantType = "authorization_code";
     private String responseType = "code";
     private String scope;
 
-    public OpenIdConnectServlet(String openIdIssuerUrl) throws IOException {
-        this.openidConfigurationUrl = openIdIssuerUrl;
-
-        OpenidConfiguration configuration = new OpenidConfiguration(openIdIssuerUrl);
-        this.authorizationEndpoint = configuration.getAuthorizationEndpoint();
-        this.tokenEndpoint = configuration.getTokenEndpoint();
-        this.scope = configuration.getScopesString();
+    public Oauth2Servlet(String authorizationEndpoint, String tokenEndpoint, String scope) {
+        this.authorizationEndpoint = authorizationEndpoint;
+        this.tokenEndpoint = tokenEndpoint;
+        this.scope = scope;
     }
 
     @Override
@@ -63,8 +59,21 @@ public class OpenIdConnectServlet extends HttpServlet {
 
     private void setupSession(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         JsonObject tokenResponse = JsonParser.parseToObject((String) req.getSession().getAttribute("token_response"));
-        UserSession session = UserSession.getFromSession(req);
-        session.addTokenResponse(tokenResponse);
+
+        String accessToken = tokenResponse.requiredString("access_token");
+
+        JsonObject profile = JsonParser.parseToObject(
+                new URL("https://slack.com/api/users.profile.get?token=" + accessToken)
+        );
+        JsonObject conversations = JsonParser.parseToObject(
+                new URL("https://slack.com/api/conversations.list?token=" + accessToken)
+        );
+
+        UserSession.getFromSession(req)
+                .addProfile("https://slack.com", accessToken, new JsonObject()
+                    .put("user.profile.get", profile)
+                    .put("user.conversations", conversations));
+
         resp.sendRedirect("/");
     }
 
@@ -88,11 +97,11 @@ public class OpenIdConnectServlet extends HttpServlet {
         req.getSession().setAttribute("token_response", response);
         resp.setContentType("text/html");
         resp.getWriter().write("<html>"
-                        + "<h1>Token response</h1>"
-                        + "<pre>" + response + "</pre>"
-                        + "<div><a href='" + req.getServletPath() + "/session'>Create session</a></div>"
-                        + "<div><a href='/'>Front page</a></div>"
-                        + "</html>");
+                + "<h1>Token response</h1>"
+                + "<pre>" + response + "</pre>"
+                + "<div><a href='" + req.getServletPath() + "/session'>Create session</a></div>"
+                + "<div><a href='/'>Front page</a></div>"
+                + "</html>");
     }
 
     private void oauth2callback(HttpServletRequest req, HttpServletResponse resp) throws IOException {

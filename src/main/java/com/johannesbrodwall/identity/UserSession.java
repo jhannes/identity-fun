@@ -25,16 +25,25 @@ public class UserSession {
         return session;
     }
 
-    public void addTokenResponse(String provider, JsonObject tokenResponse) {
-        idProviderSessions.put(provider, new IdProviderSession(tokenResponse));
+    public void addTokenResponse(JsonObject tokenResponse) {
+        OpenIdConnectSession session = new OpenIdConnectSession(tokenResponse);
+        idProviderSessions.put(session.getIdToken().iss(), session);
     }
 
-    public static class IdProviderSession {
+    public void addProfile(String provider, String accessToken, JsonObject profile) {
+        idProviderSessions.put(provider, new Oauth2ProviderSession(accessToken, profile));
+    }
+
+    public interface IdProviderSession {
+
+    }
+
+    public static class OpenIdConnectSession implements IdProviderSession {
         private final String accessToken;
         private final Optional<String> refreshToken;
         private final JwtToken idToken;
 
-        public IdProviderSession(JsonObject tokenResponse) {
+        public OpenIdConnectSession(JsonObject tokenResponse) {
             this.accessToken = tokenResponse.requiredString("access_token");
             this.refreshToken = tokenResponse.stringValue("refresh_token");
             this.idToken = new JwtToken(tokenResponse.requiredString("id_token"), true);
@@ -50,6 +59,24 @@ public class UserSession {
 
         public String getAccessToken() {
             return accessToken;
+        }
+    }
+
+    public class Oauth2ProviderSession implements IdProviderSession {
+        private final String accessToken;
+        private final JsonObject profile;
+
+        public Oauth2ProviderSession(String accessToken, JsonObject profile) {
+            this.accessToken = accessToken;
+            this.profile = profile;
+        }
+
+        public String getAccessToken() {
+            return accessToken;
+        }
+
+        public JsonObject getProfile() {
+            return profile;
         }
     }
 }

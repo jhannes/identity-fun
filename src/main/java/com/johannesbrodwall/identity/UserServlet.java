@@ -13,7 +13,7 @@ public class UserServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setContentType("text/javascript");
         resp.getWriter().write("displayUser(");
-        JsonGenerator.generate(UserSession.getFromSession(req)).toJson(resp.getWriter());
+        JsonGenerator.generateUsingImplementationAsTemplate(UserSession.getFromSession(req)).toJson(resp.getWriter());
         resp.getWriter().write(")");
     }
 }

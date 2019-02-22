@@ -47,10 +47,24 @@ public class IdentityServer {
 
         webAppContext.addServlet(new ServletHolder(createGoogleIdProviderServlet()), "/id/google/*");
         webAppContext.addServlet(new ServletHolder(createAzureIdProviderServlet()), "/id/microsoft/*");
+        webAppContext.addServlet(new ServletHolder(createSlackIdProviderServlet()), "/id/slack/*");
         webAppContext.addServlet(new ServletHolder(new UserServlet()), "/user");
 
 
         return webAppContext;
+    }
+
+    private Oauth2Servlet createSlackIdProviderServlet() {
+        // Setup https://api.slack.com/apps
+
+        String authorizationEndpoint = "https://javaBin-test.slack.com/oauth/authorize";
+        String tokenEndpoint = "https://slack.com/api/oauth.access";
+        String scope = "identity.basic";
+        Oauth2Servlet servlet = new Oauth2Servlet(authorizationEndpoint, tokenEndpoint, scope);
+        servlet.setClientId("497067121668.498662296310");
+        servlet.setClientSecret("b1e0b7d39934c4fbb75242dcf056c4a9");
+        servlet.setRedirectUri("http://localhost:8080/id/slack/oauth2callback");
+        return servlet;
     }
 
     private OpenIdConnectServlet createAzureIdProviderServlet() throws IOException {
