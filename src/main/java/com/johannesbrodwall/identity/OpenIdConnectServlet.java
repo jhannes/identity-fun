@@ -117,12 +117,16 @@ public class OpenIdConnectServlet extends HttpServlet {
         String loginState = UUID.randomUUID().toString();
         req.getSession().setAttribute("loginState", loginState);
 
+        String domainHint = req.getParameter("domain_hint");
+
         URL authenticationRequest = new URL(authorizationEndpoint + "?"
                 + "client_id=" + clientId + "&"
                 + "redirect_uri=" + redirectUri + "&"
                 + "response_type=" + responseType + "&"
                 + "scope=" + scope + "&"
-                + "state=" + loginState);
+                + "state=" + loginState
+                + (domainHint != null ? "&domain_hint=" + domainHint : "")
+        );
 
         resp.setContentType("text/html");
         resp.getWriter().write("<a href='" + authenticationRequest + "'>" + authenticationRequest + "</a>");
