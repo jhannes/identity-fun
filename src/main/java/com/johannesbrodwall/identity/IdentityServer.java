@@ -48,10 +48,19 @@ public class IdentityServer {
         webAppContext.addServlet(new ServletHolder(createGoogleIdProviderServlet()), "/id/google/*");
         webAppContext.addServlet(new ServletHolder(createAzureIdProviderServlet()), "/id/microsoft/*");
         webAppContext.addServlet(new ServletHolder(createSlackIdProviderServlet()), "/id/slack/*");
+        webAppContext.addServlet(new ServletHolder(createIdPortenProviderServlet()), "/idporten/*");
         webAppContext.addServlet(new ServletHolder(new UserServlet()), "/user");
 
 
         return webAppContext;
+    }
+
+    private OpenIdConnectServlet createIdPortenProviderServlet() throws IOException {
+        OpenIdConnectServlet servlet = new OpenIdConnectServlet("https://oidc-ver1.difi.no/idporten-oidc-provider");
+        servlet.setClientId("oidc_sopra_steria");
+        servlet.setClientSecret("");
+        servlet.setRedirectUri("http://localhost:8080/idporten/oauth2callback");
+        return servlet;
     }
 
     private Oauth2Servlet createSlackIdProviderServlet() {
