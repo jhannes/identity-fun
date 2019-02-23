@@ -1,5 +1,7 @@
 package com.johannesbrodwall.identity;
 
+import com.johannesbrodwall.identity.util.BearerToken;
+import com.johannesbrodwall.identity.util.HttpAuthorization;
 import org.jsonbuddy.JsonObject;
 import org.jsonbuddy.parse.JsonParser;
 import org.slf4j.Logger;
@@ -147,7 +149,7 @@ public class Oauth2Servlet extends HttpServlet {
         req.getSession().setAttribute("token_response", response);
         resp.setContentType("text/html");
         resp.getWriter().write("<html>"
-                + "<h2>Token received</h2>"
+                + "<h2>Step 3: Process token</h2>"
                 + "<div>This was the response from " + tokenEndpoint + "</div>"
                 + "<pre>" + response + "</pre>"
                 + (connection.getResponseCode() < 400
@@ -161,15 +163,16 @@ public class Oauth2Servlet extends HttpServlet {
     private void setupSession(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         JsonObject tokenResponse = JsonParser.parseToObject((String) req.getSession().getAttribute("token_response"));
 
-        String accessToken = tokenResponse.requiredString("access_token");
+        BearerToken accessToken = new BearerToken(tokenResponse.requiredString("access_token"));
 
-        logger.debug("Fetching user info from : {}", new URL("https://slack.com/api/users.profile.get?token=" + accessToken));
-        JsonObject profile = JsonParser.parseToObject(
-                new URL("https://slack.com/api/users.profile.get?token=" + accessToken)
-        );
-        logger.debug("Fetching user conversations from : {}", new URL("https://slack.com/api/conversations.list?types=private_channel,public_channel&token=" + accessToken));
-        JsonObject conversations = JsonParser.parseToObject(
-                new URL("https://slack.com/api/conversations.list?types=private_channel,public_channel&token=" + accessToken)
+        URL slackApiUrl = new URL("https://slack.com/api/");
+
+        logger.debug("Fetching user info from : {}", new URL(slackApiUrl, "users.profile.get"));
+        JsonObject profile = jsonParserParseToObject(new URL(slackApiUrl, "users.profile.get"), accessToken);
+        logger.debug("Fetching user conversations from : {}", new URL(slackApiUrl,"conversations.list?types=private_channel,public_channel"));
+        JsonObject conversations = jsonParserParseToObject(
+                new URL(slackApiUrl,"conversations.list?types=private_channel,public_channel"),
+                accessToken
         );
 
         UserSession.Oauth2ProviderSession session = new UserSession.Oauth2ProviderSession(accessToken, new JsonObject()
@@ -179,6 +182,13 @@ public class Oauth2Servlet extends HttpServlet {
 
         resp.sendRedirect("/");
     }
+
+    private JsonObject jsonParserParseToObject(URL endpoint, HttpAuthorization authorization) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) endpoint.openConnection();
+        authorization.authorize(connection);
+        return JsonParser.parseToObject(connection);
+    }
+
 
     private String toString(InputStream inputStream) throws IOException {
         StringBuilder responseBuffer = new StringBuilder();

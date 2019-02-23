@@ -4,6 +4,7 @@ import org.jsonbuddy.JsonObject;
 import org.jsonbuddy.parse.JsonParser;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
 
@@ -29,5 +30,13 @@ public class OpenidConfiguration {
 
     private List<String> getScopes() {
         return configuration.requiredArray("scopes_supported").strings();
+    }
+
+    public String getIssuer() {
+        return configuration.requiredString("issuer");
+    }
+
+    public URL getUserinfoEndpoint() throws MalformedURLException {
+        return new URL(configuration.requiredString("userinfo_endpoint"));
     }
 }

@@ -25,12 +25,13 @@ The protocol is perceived with an air of mystery by many developers, but it's su
 * [x] Write Linkedin post about ID-porten
 * [x] Write Linkedin post about AD
 * [x] Configuration for client ids and secrets
-* [ ] Make the debugging pages more debuggable and improve logging
-* [ ] Make API profile call for each provider
+* [x] Make the debugging pages more debuggable and improve logging
+* [x] Make API profile call for each provider
 * [ ] Active Directory admin
+    * [ ] Create reasonable sample directory
     * [ ] Only grant access to certain groups
     * [ ] Give application roles
     * [ ] Require MFA (requires paid AD)
-* [ ] Style login buttons
 * [ ] Oauth2Servlet is superclass of OpenIdConnectServlet
+* [ ] Style login buttons
 * [ ] Demo of public clients (response_mode=fragment, pkce)

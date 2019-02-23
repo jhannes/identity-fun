@@ -1,5 +1,6 @@
 package com.johannesbrodwall.identity;
 
+import com.johannesbrodwall.identity.util.BearerToken;
 import org.jsonbuddy.JsonObject;
 
 import javax.servlet.http.HttpServletRequest;
@@ -32,17 +33,27 @@ public class UserSession {
 
     public interface IdProviderSession {
 
+        BearerToken getAccessToken();
+
+        JsonObject getUserinfo();
     }
 
     public static class OpenIdConnectSession implements IdProviderSession {
-        private final String accessToken;
+        private final BearerToken accessToken;
+        private JsonObject userinfo;
         private final Optional<String> refreshToken;
         private final JwtToken idToken;
 
-        public OpenIdConnectSession(JsonObject tokenResponse) {
-            this.accessToken = tokenResponse.requiredString("access_token");
-            this.refreshToken = tokenResponse.stringValue("refresh_token");
-            this.idToken = new JwtToken(tokenResponse.requiredString("id_token"), true);
+        public OpenIdConnectSession(BearerToken accessToken, JsonObject userinfo, Optional<String> refreshToken, JwtToken idToken) {
+            this.accessToken = accessToken;
+            this.userinfo = userinfo;
+            this.refreshToken = refreshToken;
+            this.idToken = idToken;
+        }
+
+        @Override
+        public JsonObject getUserinfo() {
+            return userinfo;
         }
 
         public Optional<String> getRefreshToken() {
@@ -53,26 +64,29 @@ public class UserSession {
             return idToken;
         }
 
-        public String getAccessToken() {
+        @Override
+        public BearerToken getAccessToken() {
             return accessToken;
         }
     }
 
     public static class Oauth2ProviderSession implements IdProviderSession {
-        private final String accessToken;
-        private final JsonObject profile;
+        private final BearerToken accessToken;
+        private final JsonObject userinfo;
 
-        public Oauth2ProviderSession(String accessToken, JsonObject profile) {
+        public Oauth2ProviderSession(BearerToken accessToken, JsonObject userinfo) {
             this.accessToken = accessToken;
-            this.profile = profile;
+            this.userinfo = userinfo;
         }
 
-        public String getAccessToken() {
+        @Override
+        public BearerToken getAccessToken() {
             return accessToken;
         }
 
-        public JsonObject getProfile() {
-            return profile;
+        @Override
+        public JsonObject getUserinfo() {
+            return userinfo;
         }
     }
 }
