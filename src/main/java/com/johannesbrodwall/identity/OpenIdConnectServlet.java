@@ -102,7 +102,6 @@ public class OpenIdConnectServlet extends HttpServlet {
     private void oauth2callback(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String code = req.getParameter("code");
         String state = req.getParameter("state");
-        String scope = req.getParameter("scope");
 
         logger.debug("oauth2callback code {}", code);
         logger.debug("oauth2callback with response {}: {}", Collections.list(req.getParameterNames()), req.getQueryString());
@@ -140,7 +139,6 @@ public class OpenIdConnectServlet extends HttpServlet {
         payload = payload.replace("xxxxxxx", URLEncoder.encode(clientSecret, StandardCharsets.UTF_8.toString()));
 
         logger.debug("Fetching token from POST {} with payload: {}", tokenEndpoint, payload);
-
         HttpURLConnection connection = (HttpURLConnection) new URL(tokenEndpoint).openConnection();
         connection.setDoOutput(true);
         connection.setDoInput(true);
