@@ -18,24 +18,25 @@ public class OpenIdConnectServlet extends HttpServlet {
 
     private static Logger logger = LoggerFactory.getLogger(OpenIdConnectServlet.class);
 
-    private String clientId;
-    private String clientSecret;
-    private String redirectUri;
+    private final String clientId;
+    private final String clientSecret;
+    private final String redirectUri;
 
-    private String openidConfigurationUrl;
-    private String authorizationEndpoint;
-    private String tokenEndpoint;
+    private final String authorizationEndpoint;
+    private final String tokenEndpoint;
     private String grantType = "authorization_code";
     private String responseType = "code";
     private String scope;
 
-    public OpenIdConnectServlet(String openIdIssuerUrl) throws IOException {
-        this.openidConfigurationUrl = openIdIssuerUrl;
-
+    public OpenIdConnectServlet(String openIdIssuerUrl, Oauth2ClientConfiguration clientConfiguration) throws IOException {
         OpenidConfiguration configuration = new OpenidConfiguration(openIdIssuerUrl);
         this.authorizationEndpoint = configuration.getAuthorizationEndpoint();
         this.tokenEndpoint = configuration.getTokenEndpoint();
         this.scope = configuration.getScopesString();
+
+        this.clientId = clientConfiguration.getClientId();
+        this.clientSecret = clientConfiguration.getClientSecret();
+        this.redirectUri = clientConfiguration.getRedirectUri();
     }
 
     @Override
@@ -141,17 +142,5 @@ public class OpenIdConnectServlet extends HttpServlet {
             }
         }
         return responseBuffer.toString();
-    }
-
-    public void setClientId(String clientId) {
-        this.clientId = clientId;
-    }
-
-    public void setClientSecret(String clientSecret) {
-        this.clientSecret = clientSecret;
-    }
-
-    public void setRedirectUri(String redirectUri) {
-        this.redirectUri = redirectUri;
     }
 }

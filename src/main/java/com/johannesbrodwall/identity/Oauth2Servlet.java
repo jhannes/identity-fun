@@ -18,20 +18,23 @@ public class Oauth2Servlet extends HttpServlet {
 
     private static Logger logger = LoggerFactory.getLogger(Oauth2Servlet.class);
 
-    private String clientId;
-    private String clientSecret;
-    private String redirectUri;
+    private final String clientId;
+    private final String clientSecret;
+    private final String redirectUri;
 
-    private String authorizationEndpoint;
-    private String tokenEndpoint;
+    private final String authorizationEndpoint;
+    private final String tokenEndpoint;
     private String grantType = "authorization_code";
     private String responseType = "code";
     private String scope;
 
-    public Oauth2Servlet(String authorizationEndpoint, String tokenEndpoint, String scope) {
+    public Oauth2Servlet(String authorizationEndpoint, String tokenEndpoint, String scope, Oauth2ClientConfiguration configuration) {
         this.authorizationEndpoint = authorizationEndpoint;
         this.tokenEndpoint = tokenEndpoint;
         this.scope = scope;
+        this.clientId = configuration.getClientId();
+        this.clientSecret = configuration.getClientSecret();
+        this.redirectUri = configuration.getRedirectUri();
     }
 
     @Override
@@ -146,17 +149,5 @@ public class Oauth2Servlet extends HttpServlet {
             }
         }
         return responseBuffer.toString();
-    }
-
-    public void setClientId(String clientId) {
-        this.clientId = clientId;
-    }
-
-    public void setClientSecret(String clientSecret) {
-        this.clientSecret = clientSecret;
-    }
-
-    public void setRedirectUri(String redirectUri) {
-        this.redirectUri = redirectUri;
     }
 }

@@ -8,7 +8,9 @@ import org.eclipse.jetty.webapp.WebAppContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileReader;
 import java.io.IOException;
+import java.util.Properties;
 
 public class IdentityServer {
 
@@ -45,50 +47,42 @@ public class IdentityServer {
         webAppContext.setBaseResource(Resource.newClassPathResource("/webapp-identity"));
         webAppContext.getInitParams().put("org.eclipse.jetty.servlet.Default.useFileMappedBuffer", "false");
 
-        webAppContext.addServlet(new ServletHolder(createGoogleIdProviderServlet()), "/id/google/*");
-        webAppContext.addServlet(new ServletHolder(createAzureIdProviderServlet()), "/id/microsoft/*");
+        addOpenIdConnectServlet(webAppContext, "/id/google/*", "google", "https://accounts.google.com");
+        addOpenIdConnectServlet(webAppContext, "/id/microsoft/*", "azure", "https://login.microsoftonline.com/common");
+        addOpenIdConnectServlet(webAppContext, "/idporten/*", "idporten", "https://oidc-ver1.difi.no/idporten-oidc-provider");
         webAppContext.addServlet(new ServletHolder(createSlackIdProviderServlet()), "/id/slack/*");
-        webAppContext.addServlet(new ServletHolder(createIdPortenProviderServlet()), "/idporten/*");
         webAppContext.addServlet(new ServletHolder(new UserServlet()), "/user");
 
 
         return webAppContext;
     }
 
-    private OpenIdConnectServlet createIdPortenProviderServlet() throws IOException {
-        OpenIdConnectServlet servlet = new OpenIdConnectServlet("https://oidc-ver1.difi.no/idporten-oidc-provider");
-        servlet.setClientId("oidc_sopra_steria");
-        servlet.setClientSecret("");
-        servlet.setRedirectUri("http://localhost:8080/idporten/oauth2callback");
-        return servlet;
+    private void addOpenIdConnectServlet(WebAppContext webAppContext, String pathSpec, String providerName, String openIdIssuerUrl) throws IOException {
+        OpenIdConnectServlet servlet = new OpenIdConnectServlet(openIdIssuerUrl, getOauth2ClientConfiguration(providerName));
+        webAppContext.addServlet(new ServletHolder(servlet), pathSpec);
     }
 
-    private Oauth2Servlet createSlackIdProviderServlet() {
+    private Oauth2Servlet createSlackIdProviderServlet() throws IOException {
         // Setup https://api.slack.com/apps
-
         String authorizationEndpoint = "https://javaBin-test.slack.com/oauth/authorize";
         String tokenEndpoint = "https://slack.com/api/oauth.access";
         String scope = "identity.basic";
-        Oauth2Servlet servlet = new Oauth2Servlet(authorizationEndpoint, tokenEndpoint, scope);
-        servlet.setClientId("497067121668.498662296310");
-        servlet.setClientSecret("b1e0b7d39934c4fbb75242dcf056c4a9");
-        servlet.setRedirectUri("http://localhost:8080/id/slack/oauth2callback");
-        return servlet;
+        return new Oauth2Servlet(authorizationEndpoint, tokenEndpoint, scope, getOauth2ClientConfiguration("slack"));
     }
 
-    private OpenIdConnectServlet createAzureIdProviderServlet() throws IOException {
-        OpenIdConnectServlet servlet = new OpenIdConnectServlet("https://login.microsoftonline.com/common");
-        servlet.setClientId("55a62cf9-3f20-47e0-b61d-51f835fd5945");
-        servlet.setClientSecret("[4_)p;XqZ)|V/ec#xl");
-        servlet.setRedirectUri("http://localhost:8080/id/microsoft/oauth2callback");
-        return servlet;
+    private Oauth2ClientConfiguration getOauth2ClientConfiguration(String providerName) throws IOException {
+        Properties properties = new Properties();
+
+        try (FileReader reader = new FileReader("oauth2-providers.properties")) {
+            properties.load(reader);
+        }
+
+        Oauth2ClientConfiguration configuration = new Oauth2ClientConfiguration(providerName);
+        configuration.setClientId(properties.getProperty(providerName + ".client_id"));
+        configuration.setClientSecret(properties.getProperty(providerName + ".client_secret"));
+        configuration.setRedirectUri(properties.getProperty(providerName + ".redirect_uri"));
+        return configuration;
     }
 
-    private OpenIdConnectServlet createGoogleIdProviderServlet() throws IOException {
-        OpenIdConnectServlet servlet = new OpenIdConnectServlet("https://accounts.google.com");
-        servlet.setClientId("716142064442-mj5uo5olbrqdau8qu5gl47emdmb50uil.apps.googleusercontent.com");
-        servlet.setClientSecret("W5CEYkxFQ7jy9m2N9gYFr-fz");
-        servlet.setRedirectUri("http://localhost:8080/id/google/oauth2callback");
-        return servlet;
-    }
+
 }
