@@ -47,6 +47,31 @@ public class JwtToken {
         return payload.requiredString("iss");
     }
 
+    /**
+     * The "sub" (subject) claim identifies the principal that is the
+     * subject of the JWT.  The claims in a JWT are normally statements
+     * about the subject.  The subject value MUST either be scoped to be
+     * locally unique in the context of the issuer or be globally unique.
+     * The processing of this claim is generally application specific.  The
+     * "sub" value is a case-sensitive string containing a StringOrURI
+     * value.  Use of this claim is OPTIONAL.
+     * https://tools.ietf.org/html/rfc7519
+     */
+    public String sub() {
+        return payload.requiredString("sub");
+    }
+
+    /**
+     * Audience(s) that this ID Token is intended for. It MUST contain the OAuth 2.0 client_id
+     * of the Relying Party as an audience value. It MAY also contain identifiers for other
+     * audiences. In the general case, the aud value is an array of case sensitive strings.
+     * In the common special case when there is one audience, the aud value MAY be a single
+     * case sensitive string.
+     * https://tools.ietf.org/html/rfc7519
+     */
+    public String aud() {
+        return payload.requiredString("aud");
+    }
 
     private void safeVerifySignature(String alg, String iss, String keyId, String[] tokenValues) {
         try {
@@ -93,6 +118,17 @@ public class JwtToken {
      */
     private Optional<Instant> nbf() {
         return payload.longValue("nbf").map(Instant::ofEpochSecond);
+    }
+
+    /**
+     * The "iat" (issued at) claim identifies the time at which the JWT was
+     * issued.  This claim can be used to determine the age of the JWT.  Its
+     * value MUST be a number containing a NumericDate value.  Use of this
+     * claim is OPTIONAL.
+     * https://tools.ietf.org/html/rfc7519
+     */
+    public Instant iat() {
+        return Instant.ofEpochSecond(payload.requiredLong("iat"));
     }
 
     public Optional<Instant> authTime() {

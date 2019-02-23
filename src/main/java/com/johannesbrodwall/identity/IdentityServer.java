@@ -66,7 +66,7 @@ public class IdentityServer {
         // Setup https://api.slack.com/apps
         String authorizationEndpoint = "https://javaBin-test.slack.com/oauth/authorize";
         String tokenEndpoint = "https://slack.com/api/oauth.access";
-        String scope = "identity.basic";
+        String scope = "groups:read";
         return new Oauth2Servlet(authorizationEndpoint, tokenEndpoint, scope, getOauth2ClientConfiguration("slack"));
     }
 

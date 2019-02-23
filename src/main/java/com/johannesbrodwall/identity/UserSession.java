@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+@SuppressWarnings("unused")
 public class UserSession {
 
     private Map<String, IdProviderSession> idProviderSessions = new HashMap<>();
@@ -25,13 +26,8 @@ public class UserSession {
         return session;
     }
 
-    public void addTokenResponse(JsonObject tokenResponse) {
-        OpenIdConnectSession session = new OpenIdConnectSession(tokenResponse);
-        idProviderSessions.put(session.getIdToken().iss(), session);
-    }
-
-    public void addProfile(String provider, String accessToken, JsonObject profile) {
-        idProviderSessions.put(provider, new Oauth2ProviderSession(accessToken, profile));
+    public void addSession(String idProvider, IdProviderSession session) {
+        idProviderSessions.put(idProvider, session);
     }
 
     public interface IdProviderSession {
@@ -62,7 +58,7 @@ public class UserSession {
         }
     }
 
-    public class Oauth2ProviderSession implements IdProviderSession {
+    public static class Oauth2ProviderSession implements IdProviderSession {
         private final String accessToken;
         private final JsonObject profile;
 

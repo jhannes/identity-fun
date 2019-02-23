@@ -72,10 +72,10 @@ public class Oauth2Servlet extends HttpServlet {
                 new URL("https://slack.com/api/conversations.list?token=" + accessToken)
         );
 
-        UserSession.getFromSession(req)
-                .addProfile("https://slack.com", accessToken, new JsonObject()
-                    .put("user.profile.get", profile)
-                    .put("user.conversations", conversations));
+        UserSession.Oauth2ProviderSession session = new UserSession.Oauth2ProviderSession(accessToken, new JsonObject()
+                .put("user.profile.get", profile)
+                .put("user.conversations", conversations));
+        UserSession.getFromSession(req).addSession("https://slack.com", session);
 
         resp.sendRedirect("/");
     }
