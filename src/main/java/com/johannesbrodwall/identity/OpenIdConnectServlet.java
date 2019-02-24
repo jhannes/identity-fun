@@ -1,6 +1,5 @@
 package com.johannesbrodwall.identity;
 
-import com.johannesbrodwall.identity.util.BearerToken;
 import com.johannesbrodwall.identity.util.HttpAuthorization;
 import org.jsonbuddy.JsonObject;
 import org.jsonbuddy.parse.JsonParser;
@@ -27,9 +26,8 @@ public class OpenIdConnectServlet extends HttpServlet {
     private final String clientSecret;
     private final String redirectUri;
 
-    private final String authorizationEndpoint;
-    private final String tokenEndpoint;
-    private String responseType = "code";
+    private final URL authorizationEndpoint;
+    private final URL tokenEndpoint;
     private String scope;
     private OpenidConfiguration configuration;
 
@@ -81,7 +79,7 @@ public class OpenIdConnectServlet extends HttpServlet {
         URL authenticationRequest = new URL(authorizationEndpoint + "?"
                 + "client_id=" + clientId + "&"
                 + "redirect_uri=" + redirectUri + "&"
-                + "response_type=" + responseType + "&"
+                + "response_type=" + "code" + "&"
                 + "scope=" + scope + "&"
                 + "state=" + loginState
                 + (domainHint != null ? "&domain_hint=" + domainHint : "")
@@ -132,7 +130,6 @@ public class OpenIdConnectServlet extends HttpServlet {
             return;
         }
 
-
         String payload = "client_id=" + clientId
                 + "&" + "client_secret=" + "xxxxxxx"
                 + "&" + "redirect_uri=" + redirectUri
@@ -157,7 +154,7 @@ public class OpenIdConnectServlet extends HttpServlet {
         payload = payload.replace("xxxxxxx", URLEncoder.encode(clientSecret, StandardCharsets.UTF_8.toString()));
 
         logger.debug("Fetching token from POST {} with payload: {}", tokenEndpoint, payload);
-        HttpURLConnection connection = (HttpURLConnection) new URL(tokenEndpoint).openConnection();
+        HttpURLConnection connection = (HttpURLConnection) tokenEndpoint.openConnection();
         connection.setDoOutput(true);
         connection.setDoInput(true);
         try (OutputStream outputStream = connection.getOutputStream()) {
@@ -188,15 +185,14 @@ public class OpenIdConnectServlet extends HttpServlet {
 
     private void setupSession(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         JsonObject tokenResponse = JsonParser.parseToObject((String) req.getSession().getAttribute("token_response"));
+        logger.debug("Access token: {} expires {}",
+                tokenResponse.requiredString("access_token"),
+                tokenResponse.stringValue("expires_on").orElse(""));
 
         String idToken = tokenResponse.requiredString("id_token");
-        BearerToken accessToken = new BearerToken(tokenResponse.requiredString("access_token"));
-
-        logger.debug("Access token: {} expires {}", accessToken, tokenResponse.stringValue("expires_on").orElse(""));
         logger.debug("Decoding session from JWT: {}", idToken);
         JwtToken idTokenJwt = new JwtToken(idToken, true);
-        logger.debug("Validated token with iss={} sub={} aud={}",
-                idTokenJwt.iss(), idTokenJwt.sub(), idTokenJwt.aud());
+        logger.debug("Validated token with iss={} sub={} aud={}", idTokenJwt.iss(), idTokenJwt.sub(), idTokenJwt.aud());
         if (!clientId.equals(idTokenJwt.aud())) {
             logger.warn("Token was not intended for us! {} != {}", clientId, idTokenJwt.aud());
         }
@@ -204,18 +200,15 @@ public class OpenIdConnectServlet extends HttpServlet {
             logger.warn("Token was not issued by expected OpenID provider! {} != {}", configuration.getIssuer(), idTokenJwt.iss());
         }
 
+        UserSession.OpenIdConnectSession session = new UserSession.OpenIdConnectSession();
+        session.setControlUrl(req.getServletPath());
+        session.setAccessToken(tokenResponse.requiredString("access_token"));
+        session.setRefreshToken(tokenResponse.stringValue("refresh_token"));
+        session.setIdToken(idTokenJwt);
+        session.setEndSessionEndpoint(configuration.getEndSessionEndpoint());
 
-        logger.debug("Fetching user info from {}", configuration.getUserinfoEndpoint());
-        JsonObject userInfo = jsonParserParseToObject(configuration.getUserinfoEndpoint(), accessToken);
-        logger.debug("User info: {}", userInfo);
+        session.setUserinfo(jsonParserParseToObject(configuration.getUserinfoEndpoint(), session.getAccessBearerToken()));
 
-        UserSession.OpenIdConnectSession session = new UserSession.OpenIdConnectSession(
-                req.getServletPath(),
-                accessToken,
-                userInfo,
-                tokenResponse.stringValue("refresh_token"),
-                idTokenJwt
-        );
         UserSession.getFromSession(req).addSession(session);
         resp.sendRedirect("/");
     }
@@ -224,14 +217,14 @@ public class OpenIdConnectServlet extends HttpServlet {
         UserSession session = UserSession.getFromSession(req);
         UserSession.IdProviderSession idProviderSession = session.getIdProviderSessions().stream()
                 .filter(s -> s.getControlUrl().equals(req.getServletPath()))
-                .findAny().orElseThrow(() -> new IllegalArgumentException("Can't refresh nonexisting session"));
+                .findAny().orElseThrow(() -> new IllegalArgumentException("Can't refresh non-existing session"));
 
         String payload = "client_id=" + clientId
                 + "&" + "client_secret=" + clientSecret
                 + "&" + "redirect_uri=" + redirectUri
                 + "&" + "refresh_token=" + idProviderSession.getRefreshToken()
                 + "&" + "grant_type=" + "refresh_token";
-        HttpURLConnection connection = (HttpURLConnection) new URL(tokenEndpoint).openConnection();
+        HttpURLConnection connection = (HttpURLConnection) tokenEndpoint.openConnection();
         connection.setDoOutput(true);
         connection.setDoInput(true);
         try (OutputStream outputStream = connection.getOutputStream()) {
@@ -244,9 +237,12 @@ public class OpenIdConnectServlet extends HttpServlet {
     }
 
     private JsonObject jsonParserParseToObject(URL endpoint, HttpAuthorization authorization) throws IOException {
+        logger.debug("Fetching from {}", endpoint);
         HttpURLConnection connection = (HttpURLConnection) endpoint.openConnection();
         authorization.authorize(connection);
-        return JsonParser.parseToObject(connection);
+        JsonObject response = JsonParser.parseToObject(connection);
+        logger.debug("Response: {}", response);
+        return response;
     }
 
     private String toString(InputStream inputStream) throws IOException {

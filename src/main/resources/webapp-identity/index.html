@@ -58,6 +58,15 @@ function displayUser(user) {
             sessionElement.appendChild(refreshElement);
         }
 
+        if (session.endSessionEndpoint) {
+            const endSessionElement = document.createElement("p");
+            const endSessionLink = document.createElement("a");
+            endSessionLink.setAttribute("href", session.endSessionEndpoint);
+            endSessionLink.innerHTML = "End session";
+            endSessionElement.appendChild(endSessionLink);
+            sessionElement.appendChild(endSessionElement);
+        }
+
         sessionsElement.appendChild(sessionElement);
     }
 

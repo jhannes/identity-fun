@@ -35,7 +35,9 @@ The protocol is perceived with an air of mystery by many developers, but it's su
     * [x] Require MFA (requires paid AD)
 * [x] Error handling on authenticate
 * [x] Refresh tokens
-* [ ] Logout
+* [x] Logout
+    * [x] Show end-session endpoint
+    * [ ] front-channel logout (not available on http://localhost on Azure)
 * [ ] Oauth2Servlet is superclass of OpenIdConnectServlet
 * [ ] Deployment
 * [ ] Demo of public clients (response_mode=fragment, pkce)

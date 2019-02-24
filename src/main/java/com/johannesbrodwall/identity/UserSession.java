@@ -1,9 +1,11 @@
 package com.johannesbrodwall.identity;
 
 import com.johannesbrodwall.identity.util.BearerToken;
+import com.johannesbrodwall.identity.util.HttpAuthorization;
 import org.jsonbuddy.JsonObject;
 
 import javax.servlet.http.HttpServletRequest;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -47,21 +49,38 @@ public class UserSession {
     }
 
     public static class OpenIdConnectSession implements IdProviderSession {
-        private final String controlUrl;
-        private final String issuer;
+        private String controlUrl;
+        private String issuer;
         private BearerToken accessToken;
         private JsonObject userinfo;
-        private final Optional<String> refreshToken;
-        private final JwtToken idToken;
+        private Optional<String> refreshToken;
+        private Optional<URL> endSessionEndpoint;
 
-        public OpenIdConnectSession(String controlUrl, BearerToken accessToken, JsonObject userinfo, Optional<String> refreshToken, JwtToken idToken) {
+        public void setControlUrl(String controlUrl) {
             this.controlUrl = controlUrl;
-            this.issuer = idToken.iss();
+        }
+
+        public void setIssuer(String issuer) {
+            this.issuer = issuer;
+        }
+
+        public void setAccessToken(BearerToken accessToken) {
             this.accessToken = accessToken;
+        }
+
+        public void setUserinfo(JsonObject userinfo) {
             this.userinfo = userinfo;
+        }
+
+        public void setRefreshToken(Optional<String> refreshToken) {
             this.refreshToken = refreshToken;
+        }
+
+        public void setIdToken(JwtToken idToken) {
             this.idToken = idToken;
         }
+
+        private JwtToken idToken;
 
         @Override
         public String getControlUrl() {
@@ -96,29 +115,42 @@ public class UserSession {
         public void setAccessToken(String accessToken) {
             this.accessToken = new BearerToken(accessToken);
         }
+
+        public HttpAuthorization getAccessBearerToken() {
+            return accessToken;
+        }
+
+        public String getEndSessionEndpoint() {
+            return endSessionEndpoint.map(URL::toString).orElse(null);
+        }
+
+        public void setEndSessionEndpoint(Optional<URL> endSessionEndpoint) {
+            this.endSessionEndpoint = endSessionEndpoint;
+        }
     }
 
     public static class Oauth2ProviderSession implements IdProviderSession {
-        private final String controlUrl;
+        private String controlUrl;
         private BearerToken accessToken;
-        private final String issuer;
-        private final JsonObject userinfo;
-
-        public Oauth2ProviderSession(String controlUrl, String issuer, BearerToken accessToken, JsonObject userinfo) {
-            this.controlUrl = controlUrl;
-            this.issuer = issuer;
-            this.accessToken = accessToken;
-            this.userinfo = userinfo;
-        }
+        private String issuer;
+        private JsonObject userinfo;
 
         @Override
         public String getControlUrl() {
             return controlUrl;
         }
 
+        public void setControlUrl(String controlUrl) {
+            this.controlUrl = controlUrl;
+        }
+
         @Override
         public String getIssuer() {
             return issuer;
+        }
+
+        public void setIssuer(String issuer) {
+            this.issuer = issuer;
         }
 
         @Override
@@ -139,6 +171,10 @@ public class UserSession {
         @Override
         public JsonObject getUserinfo() {
             return userinfo;
+        }
+
+        public void setUserinfo(JsonObject userinfo) {
+            this.userinfo = userinfo;
         }
     }
 }

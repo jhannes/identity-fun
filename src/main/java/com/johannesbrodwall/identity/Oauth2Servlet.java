@@ -178,13 +178,13 @@ public class Oauth2Servlet extends HttpServlet {
         profile.put("user.conversations", conversations);
 
 
-        UserSession.Oauth2ProviderSession session = new UserSession.Oauth2ProviderSession(
-                req.getServletPath(),
-                "http://slack.com",
-                accessToken,
-                profile
-        );
-        UserSession.getFromSession(req).addSession(session);
+        UserSession.Oauth2ProviderSession idpSession = new UserSession.Oauth2ProviderSession();
+        idpSession.setControlUrl(req.getServletPath());
+        idpSession.setIssuer(new URL(authorizationEndpoint).getAuthority());
+        idpSession.setAccessToken(accessToken.toString());
+        idpSession.setUserinfo(profile);
+
+        UserSession.getFromSession(req).addSession(idpSession);
 
         resp.sendRedirect("/");
     }
