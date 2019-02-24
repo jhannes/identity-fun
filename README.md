@@ -38,7 +38,7 @@ The protocol is perceived with an air of mystery by many developers, but it's su
 * [x] Logout
     * [x] Show end-session endpoint
     * [ ] front-channel logout (not available on http://localhost on Azure)
-* [ ] Oauth2Servlet is superclass of OpenIdConnectServlet
-* [ ] Deployment
+* [x] Deployment
+* [ ] Oauth2Servlet is superclass of OpenIdConnectServlet?
 * [ ] Demo of public clients (response_mode=fragment, pkce)
 * [ ] Style login buttons

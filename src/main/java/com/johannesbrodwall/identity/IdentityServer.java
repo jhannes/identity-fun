@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Properties;
 
 public class IdentityServer {
@@ -36,7 +37,9 @@ public class IdentityServer {
 
     private ServerConnector createConnector() {
         ServerConnector connector = new ServerConnector(server);
-        connector.setPort(8080);
+        connector.setPort(Optional.ofNullable(System.getenv("HTTP_PLATFORM_PORT"))
+                .map(Integer::parseInt)
+                .orElse(8080));
         connector.setHost("localhost");
         return connector;
     }
