@@ -27,11 +27,16 @@ The protocol is perceived with an air of mystery by many developers, but it's su
 * [x] Configuration for client ids and secrets
 * [x] Make the debugging pages more debuggable and improve logging
 * [x] Make API profile call for each provider
-* [ ] Active Directory admin
-    * [ ] Create reasonable sample directory
-    * [ ] Only grant access to certain groups
-    * [ ] Give application roles
-    * [ ] Require MFA (requires paid AD)
+* [x] Active Directory admin
+    * [x] Create reasonable sample directory
+    * [x] Create some company branding
+    * [x] Only grant access to certain groups
+    * [x] Give application roles
+    * [x] Require MFA (requires paid AD)
+* [x] Error handling on authenticate
+* [x] Refresh tokens
+* [ ] Logout
 * [ ] Oauth2Servlet is superclass of OpenIdConnectServlet
-* [ ] Style login buttons
+* [ ] Deployment
 * [ ] Demo of public clients (response_mode=fragment, pkce)
+* [ ] Style login buttons

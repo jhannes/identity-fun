@@ -146,6 +146,7 @@ public class Oauth2Servlet extends HttpServlet {
             response = toString(connection.getErrorStream());
         }
 
+        logger.debug("Token response: {}", response);
         req.getSession().setAttribute("token_response", response);
         resp.setContentType("text/html");
         resp.getWriter().write("<html>"
@@ -168,17 +169,22 @@ public class Oauth2Servlet extends HttpServlet {
         URL slackApiUrl = new URL("https://slack.com/api/");
 
         logger.debug("Fetching user info from : {}", new URL(slackApiUrl, "users.profile.get"));
-        JsonObject profile = jsonParserParseToObject(new URL(slackApiUrl, "users.profile.get"), accessToken);
+        JsonObject profile = jsonParserParseToObject(new URL(slackApiUrl, "users.profile.get"), accessToken).requiredObject("profile");
         logger.debug("Fetching user conversations from : {}", new URL(slackApiUrl,"conversations.list?types=private_channel,public_channel"));
         JsonObject conversations = jsonParserParseToObject(
                 new URL(slackApiUrl,"conversations.list?types=private_channel,public_channel"),
                 accessToken
         );
+        profile.put("user.conversations", conversations);
 
-        UserSession.Oauth2ProviderSession session = new UserSession.Oauth2ProviderSession(accessToken, new JsonObject()
-                .put("user.profile.get", profile)
-                .put("user.conversations", conversations));
-        UserSession.getFromSession(req).addSession("https://slack.com", session);
+
+        UserSession.Oauth2ProviderSession session = new UserSession.Oauth2ProviderSession(
+                req.getServletPath(),
+                "http://slack.com",
+                accessToken,
+                profile
+        );
+        UserSession.getFromSession(req).addSession(session);
 
         resp.sendRedirect("/");
     }

@@ -29,7 +29,6 @@ public class OpenIdConnectServlet extends HttpServlet {
 
     private final String authorizationEndpoint;
     private final String tokenEndpoint;
-    private String grantType = "authorization_code";
     private String responseType = "code";
     private String scope;
     private OpenidConfiguration configuration;
@@ -65,6 +64,8 @@ public class OpenIdConnectServlet extends HttpServlet {
                 getToken(req, resp);
             } else if (action.equals("session")) {
                 setupSession(req, resp);
+            } else if (action.equals("refresh")) {
+                refreshAccessToken(req);
             } else {
                 resp.sendError(404);
             }
@@ -116,11 +117,27 @@ public class OpenIdConnectServlet extends HttpServlet {
             logger.warn("Login state DOES NOT match callback state: {} != {}", loginState, state);
         }
 
+        String error = req.getParameter("error");
+        if (error != null) {
+            resp.setContentType("text/html");
+
+            String errorDescription = req.getParameter("error_description");
+
+            resp.getWriter().write("<html>"
+                    + "<h2>Step 2b: Client received callback with error!</h2>"
+                    + "<div>Error: <code>" + error + "</code></div>"
+                    + (errorDescription != null ? "<div>Error description: <code>" + errorDescription + "</code></div>" : "")
+                    + "<div><a href='/'>Front page</a></div>"
+                    + "</html>");
+            return;
+        }
+
+
         String payload = "client_id=" + clientId
                 + "&" + "client_secret=" + "xxxxxxx"
                 + "&" + "redirect_uri=" + redirectUri
                 + "&" + "code=" + code
-                + "&" + "grant_type=" + grantType;
+                + "&" + "grant_type=" + "authorization_code";
 
         resp.setContentType("text/html");
 
@@ -154,6 +171,7 @@ public class OpenIdConnectServlet extends HttpServlet {
             response = toString(connection.getErrorStream());
         }
 
+        logger.debug("Token response: {}", response);
         req.getSession().setAttribute("token_response", response);
         resp.setContentType("text/html");
         resp.getWriter().write("<html>"
@@ -172,6 +190,9 @@ public class OpenIdConnectServlet extends HttpServlet {
         JsonObject tokenResponse = JsonParser.parseToObject((String) req.getSession().getAttribute("token_response"));
 
         String idToken = tokenResponse.requiredString("id_token");
+        BearerToken accessToken = new BearerToken(tokenResponse.requiredString("access_token"));
+
+        logger.debug("Access token: {} expires {}", accessToken, tokenResponse.stringValue("expires_on").orElse(""));
         logger.debug("Decoding session from JWT: {}", idToken);
         JwtToken idTokenJwt = new JwtToken(idToken, true);
         logger.debug("Validated token with iss={} sub={} aud={}",
@@ -183,20 +204,43 @@ public class OpenIdConnectServlet extends HttpServlet {
             logger.warn("Token was not issued by expected OpenID provider! {} != {}", configuration.getIssuer(), idTokenJwt.iss());
         }
 
-        BearerToken accessToken = new BearerToken(tokenResponse.requiredString("access_token"));
 
         logger.debug("Fetching user info from {}", configuration.getUserinfoEndpoint());
         JsonObject userInfo = jsonParserParseToObject(configuration.getUserinfoEndpoint(), accessToken);
         logger.debug("User info: {}", userInfo);
 
         UserSession.OpenIdConnectSession session = new UserSession.OpenIdConnectSession(
+                req.getServletPath(),
                 accessToken,
                 userInfo,
                 tokenResponse.stringValue("refresh_token"),
-                new JwtToken(idToken, true)
+                idTokenJwt
         );
-        UserSession.getFromSession(req).addSession(idTokenJwt.iss(), session);
+        UserSession.getFromSession(req).addSession(session);
         resp.sendRedirect("/");
+    }
+
+    private void refreshAccessToken(HttpServletRequest req) throws IOException {
+        UserSession session = UserSession.getFromSession(req);
+        UserSession.IdProviderSession idProviderSession = session.getIdProviderSessions().stream()
+                .filter(s -> s.getControlUrl().equals(req.getServletPath()))
+                .findAny().orElseThrow(() -> new IllegalArgumentException("Can't refresh nonexisting session"));
+
+        String payload = "client_id=" + clientId
+                + "&" + "client_secret=" + clientSecret
+                + "&" + "redirect_uri=" + redirectUri
+                + "&" + "refresh_token=" + idProviderSession.getRefreshToken()
+                + "&" + "grant_type=" + "refresh_token";
+        HttpURLConnection connection = (HttpURLConnection) new URL(tokenEndpoint).openConnection();
+        connection.setDoOutput(true);
+        connection.setDoInput(true);
+        try (OutputStream outputStream = connection.getOutputStream()) {
+            outputStream.write(payload.getBytes());
+        }
+        JsonObject jsonObject = JsonParser.parseToObject(connection);
+        logger.debug("Refreshed session: {}", jsonObject);
+
+        idProviderSession.setAccessToken(jsonObject.requiredString("access_token"));
     }
 
     private JsonObject jsonParserParseToObject(URL endpoint, HttpAuthorization authorization) throws IOException {

@@ -4,16 +4,16 @@ import com.johannesbrodwall.identity.util.BearerToken;
 import org.jsonbuddy.JsonObject;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
 public class UserSession {
 
-    private Map<String, IdProviderSession> idProviderSessions = new HashMap<>();
+    private List<IdProviderSession> idProviderSessions = new ArrayList<>();
 
-    public Map<String, IdProviderSession> getIdProviderSessions() {
+    public List<IdProviderSession> getIdProviderSessions() {
         return idProviderSessions;
     }
 
@@ -27,24 +27,36 @@ public class UserSession {
         return session;
     }
 
-    public void addSession(String idProvider, IdProviderSession session) {
-        idProviderSessions.put(idProvider, session);
+    public void addSession(IdProviderSession session) {
+        idProviderSessions.add(session);
     }
 
     public interface IdProviderSession {
 
-        BearerToken getAccessToken();
+        String getControlUrl();
+
+        String getIssuer();
+
+        String getAccessToken();
+
+        void setAccessToken(String accessToken);
+
+        String getRefreshToken();
 
         JsonObject getUserinfo();
     }
 
     public static class OpenIdConnectSession implements IdProviderSession {
-        private final BearerToken accessToken;
+        private final String controlUrl;
+        private final String issuer;
+        private BearerToken accessToken;
         private JsonObject userinfo;
         private final Optional<String> refreshToken;
         private final JwtToken idToken;
 
-        public OpenIdConnectSession(BearerToken accessToken, JsonObject userinfo, Optional<String> refreshToken, JwtToken idToken) {
+        public OpenIdConnectSession(String controlUrl, BearerToken accessToken, JsonObject userinfo, Optional<String> refreshToken, JwtToken idToken) {
+            this.controlUrl = controlUrl;
+            this.issuer = idToken.iss();
             this.accessToken = accessToken;
             this.userinfo = userinfo;
             this.refreshToken = refreshToken;
@@ -52,12 +64,23 @@ public class UserSession {
         }
 
         @Override
+        public String getControlUrl() {
+            return controlUrl;
+        }
+
+        @Override
+        public String getIssuer() {
+            return issuer;
+        }
+
+        @Override
         public JsonObject getUserinfo() {
             return userinfo;
         }
 
-        public Optional<String> getRefreshToken() {
-            return refreshToken;
+        @Override
+        public String getRefreshToken() {
+            return refreshToken.orElse(null);
         }
 
         public JwtToken getIdToken() {
@@ -65,23 +88,52 @@ public class UserSession {
         }
 
         @Override
-        public BearerToken getAccessToken() {
-            return accessToken;
+        public String getAccessToken() {
+            return accessToken.toString();
+        }
+
+        @Override
+        public void setAccessToken(String accessToken) {
+            this.accessToken = new BearerToken(accessToken);
         }
     }
 
     public static class Oauth2ProviderSession implements IdProviderSession {
-        private final BearerToken accessToken;
+        private final String controlUrl;
+        private BearerToken accessToken;
+        private final String issuer;
         private final JsonObject userinfo;
 
-        public Oauth2ProviderSession(BearerToken accessToken, JsonObject userinfo) {
+        public Oauth2ProviderSession(String controlUrl, String issuer, BearerToken accessToken, JsonObject userinfo) {
+            this.controlUrl = controlUrl;
+            this.issuer = issuer;
             this.accessToken = accessToken;
             this.userinfo = userinfo;
         }
 
         @Override
-        public BearerToken getAccessToken() {
-            return accessToken;
+        public String getControlUrl() {
+            return controlUrl;
+        }
+
+        @Override
+        public String getIssuer() {
+            return issuer;
+        }
+
+        @Override
+        public String getRefreshToken() {
+            return null;
+        }
+
+        @Override
+        public String getAccessToken() {
+            return accessToken.toString();
+        }
+
+        @Override
+        public void setAccessToken(String accessToken) {
+            this.accessToken = new BearerToken(accessToken);
         }
 
         @Override

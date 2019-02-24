@@ -3,15 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <title>Identity Fun</title>
+    <style>
+        #sessions {
+            display: flex;
+            flex-direction: rows;
+        }
+        #sessions div {
+            flex: 1;
+            padding: 1em;
+            margin: .5em;
+            border: 1px solid gray;
+        }
+
+    </style>
 </head>
 <body>
     <h1>A demonstration of Oauth2 and OpenID Connect</h1>
 
+    <div id="sessions"></div>
 
     <ul>
         <li><a href="/id/google/authenticate">Login with Google</a></li>
         <li><a href="/id/microsoft/authenticate">Login with Microsoft</a></li>
-        <li><a href="/id/microsoft/authenticate?domain_hint=jhannes.onmicrosoft.com">Login with Microsoft (jhannes domain)</a></li>
+        <li><a href="/id/microsoft/authenticate?domain_hint=hakkebakkeskogen.onmicrosoft.com">Login with Microsoft (Hakkebakkeskogen)</a></li>
         <li><a href="/id/microsoft/authenticate?domain_hint=soprasteria.com">Login with Microsoft (Sopra Steria)</a></li>
         <li><a href="/id/slack/authenticate">Login with Slack</a></li>
         <li><a href="/idporten/authenticate">Login with ID-porten</a></li>
@@ -23,6 +37,30 @@
 function displayUser(user) {
     console.log(user);
     document.getElementById("userInfo").innerHTML = JSON.stringify(user, null, 2);
+
+    const sessionsElement = document.getElementById("sessions");
+
+    for (const session of user.idProviderSessions) {
+        const username = session.userinfo.upn || session.userinfo.email || session.userinfo.pid;
+
+        const sessionElement = document.createElement("div");
+
+        const usernameElement = document.createElement("p");
+        usernameElement.innerHTML = username;
+        sessionElement.appendChild(usernameElement);
+
+        if (session.refreshToken) {
+            const refreshElement = document.createElement("p");
+            const refreshLink = document.createElement("a");
+            refreshLink.setAttribute("href", session.controlUrl + "/refresh");
+            refreshLink.innerHTML = "Refresh session";
+            refreshElement.appendChild(refreshLink);
+            sessionElement.appendChild(refreshElement);
+        }
+
+        sessionsElement.appendChild(sessionElement);
+    }
+
 }
 </script>
 <script src="/user"></script>
