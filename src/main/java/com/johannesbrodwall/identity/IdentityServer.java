@@ -31,6 +31,7 @@ public class IdentityServer {
     }
 
     private void setupServer() throws IOException {
+        server.addLifeCycleListener(Server.STOP_ON_FAILURE);
         server.addConnector(createConnector());
         server.setHandler(createWebAppContext());
     }

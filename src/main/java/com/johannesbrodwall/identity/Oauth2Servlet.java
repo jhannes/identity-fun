@@ -51,7 +51,7 @@ public class Oauth2Servlet extends HttpServlet {
             return;
         }
 
-        try (MDC.MDCCloseable ignored = MDC.putCloseable("provider", authorizationEndpoint)) {
+        try (MDC.MDCCloseable ignored = MDC.putCloseable("provider", req.getServletPath())) {
             String action = pathParts[1];
             if (action.equals("authenticate")) {
                 authenticate(req, resp);
@@ -62,6 +62,7 @@ public class Oauth2Servlet extends HttpServlet {
             } else if (action.equals("session")) {
                 setupSession(req, resp);
             } else {
+                logger.warn("Unknown request {}", req.getServletPath() + req.getPathInfo() + "?" + req.getQueryString());
                 resp.sendError(404);
             }
         }

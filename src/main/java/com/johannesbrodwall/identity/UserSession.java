@@ -33,6 +33,10 @@ public class UserSession {
         idProviderSessions.add(session);
     }
 
+    public void removeSession(String servletPath) {
+        idProviderSessions.removeIf(idProviderSession -> idProviderSession.getControlUrl().equals(servletPath));
+    }
+
     public interface IdProviderSession {
 
         String getControlUrl();

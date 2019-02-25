@@ -37,8 +37,9 @@ The protocol is perceived with an air of mystery by many developers, but it's su
 * [x] Refresh tokens
 * [x] Logout
     * [x] Show end-session endpoint
-    * [ ] front-channel logout (not available on http://localhost on Azure)
+    * [x] front-channel logout
 * [x] Deployment
+* [x] response_mode=fragment and response_type=id_token
+* [ ] response_mode=fragment and response_type=code with pkce (need a mobile client)
 * [ ] Oauth2Servlet is superclass of OpenIdConnectServlet?
-* [ ] Demo of public clients (response_mode=fragment, pkce)
 * [ ] Style login buttons

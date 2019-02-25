@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Oauth2 callback</title>
+
+    <style>
+        #detailsCode, #detailsToken {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h2>Step 2: Client received callback</h2>
+
+    <div id="detailsCode">
+        <div><button>Fetch token</button></div>
+
+        Normally your app would directly perform a POST to <code class="token_endpoint"></code> with this payload:<br />
+        <pre class="payload"></pre>
+    </div>
+
+    <div id="detailsToken">
+        <div class="status"></div>
+
+        <h3>id_token decoded</h3>
+        <pre class="idToken"></pre>
+    </div>
+
+
+    <p><a href=".">Front page</a></p>
+</body>
+<script>
+
+
+const idProviderConfigurations = {
+    "microsoft": {
+        "authorization_endpoint": "https://login.microsoftonline.com/common/oauth2/authorize",
+        "token_endpoint": "https://login.microsoftonline.com/common/oauth2/token",
+        "redirect_uri": "http://localhost:8080/fragments/oauth2callback.html",
+        "client_id": "55a62cf9-3f20-47e0-b61d-51f835fd5945",
+        "scope": "openid"
+    }
+};
+
+const hash = location.hash.substring(1);
+const parameters = JSON.parse('{"' + hash.replace(/&/g, '","').replace(/=/g,'":"') + '"}', function(key, value) { return key===""?value:decodeURIComponent(value) })
+
+const provider = window.localStorage.getItem("loginProvider");
+const idProviderConfig = idProviderConfigurations[provider];
+
+function receiveCode() {
+    const payload = "client_id=" + idProviderConfig.client_id +
+        "&redirect_uri=" + idProviderConfig.redirect_uri +
+        "&grant_type=authorization_code" +
+        "&code=" + parameters.code
+        ;
+
+    const details = document.getElementById("details");
+
+    details.querySelector(".token_endpoint").innerHTML = idProviderConfig.token_endpoint;
+    details.querySelector(".payload").innerHTML = payload.replace(/[&?]/g, "\n\t$&");
+    details.querySelector("button").addEventListener("click", () => fetchToken(idProviderConfig.token_endpoint, payload));
+
+    details.style.display = "block";
+}
+
+function receiveIdToken() {
+    const loginState = window.localStorage.getItem("loginState");
+
+    const details = document.getElementById("detailsToken");
+
+    if (loginState === parameters.state) {
+        details.querySelector(".status").innerHTML = "Login state matches";
+    } else {
+        details.querySelector(".status").innerHTML = "Login state MISMATCH";
+    }
+
+    const parts = parameters.id_token.split(".");
+    const idTokenDecoded = JSON.parse(atob(parts[1]));
+    const idTokenElement = details.querySelector(".idToken");
+    idTokenElement.innerHTML = JSON.stringify(idTokenDecoded, null, 2);
+
+    details.style.display = "block";
+}
+
+
+if (parameters.id_token) {
+    receiveIdToken();
+}
+
+
+</script>
+</html>

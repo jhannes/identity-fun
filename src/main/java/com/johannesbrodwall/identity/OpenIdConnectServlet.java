@@ -52,7 +52,7 @@ public class OpenIdConnectServlet extends HttpServlet {
             return;
         }
 
-        try (MDC.MDCCloseable ignored = MDC.putCloseable("provider", configuration.getIssuer())) {
+        try (MDC.MDCCloseable ignored = MDC.putCloseable("provider", req.getServletPath())) {
             String action = pathParts[1];
             if (action.equals("authenticate")) {
                 authenticate(req, resp);
@@ -64,7 +64,10 @@ public class OpenIdConnectServlet extends HttpServlet {
                 setupSession(req, resp);
             } else if (action.equals("refresh")) {
                 refreshAccessToken(req);
+            } else if (action.equals("logout")) {
+                logoutSession(req, resp);
             } else {
+                logger.warn("Unknown request {}", req.getServletPath() + req.getPathInfo() + "?" + req.getQueryString());
                 resp.sendError(404);
             }
         }
@@ -211,6 +214,14 @@ public class OpenIdConnectServlet extends HttpServlet {
 
         UserSession.getFromSession(req).addSession(session);
         resp.sendRedirect("/");
+    }
+
+    private void logoutSession(HttpServletRequest req, HttpServletResponse resp) {
+        logger.debug("Logging out session {}", req.getQueryString());
+
+        UserSession.getFromSession(req).removeSession(req.getServletPath());
+
+        resp.setStatus(200);
     }
 
     private void refreshAccessToken(HttpServletRequest req) throws IOException {

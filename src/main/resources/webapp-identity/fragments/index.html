@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Identity Fun</title>
+    <style>
+        #sessions {
+            display: flex;
+            flex-direction: rows;
+        }
+        #sessions div {
+            flex: 1;
+            padding: 1em;
+            margin: .5em;
+            border: 1px solid gray;
+        }
+
+        #loginDialog {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>A demonstration of Oauth2 and OpenID Connect</h1>
+
+    <div id="sessions"></div>
+
+    <ul id="identityProviders">
+        <li>
+            <button data-provider="microsoft">Login with Microsoft</button>
+        </li>
+        <li>
+            <button data-provider="idporten">Login with ID-porten</button>
+        </li>
+    </ul>
+
+    <div id="loginDialog">
+        <h2>Step 1: Redirect to authorization endpoint</h2>
+
+        <div><a href="#" class="authorization_url">authenticate at <span class="authorization_endpoint"></span></a></div>
+
+        <div>
+            Normally, your app would redirect directly to the following URL:
+            <pre class="authorization_url_debug"></pre>
+        </div>
+    </div>
+
+
+    <pre id="userInfo"></pre>
+
+<script>
+const idProviderConfigurations = {
+    "microsoft": {
+        "authorization_endpoint": "https://login.microsoftonline.com/common/oauth2/authorize",
+        "redirect_uri": "http://localhost:8080/fragments/oauth2callback.html",
+        "client_id": "55a62cf9-3f20-47e0-b61d-51f835fd5945",
+        "scope": "openid",
+        "response_type": "id_token"
+    },
+    "idporten": {
+        "authorization_endpoint": "https://oidc-ver1.difi.no/idporten-oidc-provider/authorize",
+        "redirect_uri": "http://localhost:8080/idporten/oauth2callback",
+        "client_id": "oidc_sopra_steria",
+        "scope": "openid+profile",
+        "response_type": "code"
+    },
+};
+
+function randomString(length) {
+  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+  let text = "";
+  for (var i = 0; i < length; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
+}
+
+
+function login(e) {
+    const idProviderConfig = idProviderConfigurations[e.target.dataset.provider];
+
+    window.localStorage.setItem("loginProvider", e.target.dataset.provider);
+
+    const loginDialog = document.getElementById("loginDialog");
+    const state = randomString(20);
+    window.localStorage.setItem("loginState", state);
+    const nonce = randomString(30);
+
+    const authorizationUrl = idProviderConfig.authorization_endpoint +
+        "?client_id=" + idProviderConfig.client_id +
+        "&redirect_uri=" + idProviderConfig.redirect_uri +
+        "&response_type=" + idProviderConfig.response_type +
+        "&response_mode=fragment" +
+        "&scope=" + idProviderConfig.scope +
+        "&state=" + state +
+        "&nonce=" + nonce
+        ;
+    loginDialog.querySelector(".authorization_url").setAttribute("href", authorizationUrl);
+    loginDialog.querySelector(".authorization_endpoint").innerHTML = idProviderConfig.authorization_endpoint;
+    loginDialog.querySelector(".authorization_url_debug").innerHTML = authorizationUrl.replace(/[&?]/g, "\n\t$&");
+
+    loginDialog.style.display = "block";
+}
+
+document.getElementById("identityProviders").addEventListener("click", e => login(e));
+</script>
+</body>
+</html>
