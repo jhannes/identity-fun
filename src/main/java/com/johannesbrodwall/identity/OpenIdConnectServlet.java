@@ -1,5 +1,6 @@
 package com.johannesbrodwall.identity;
 
+import com.johannesbrodwall.identity.jwt.JwtToken;
 import com.johannesbrodwall.identity.util.HttpAuthorization;
 import org.jsonbuddy.JsonObject;
 import org.jsonbuddy.parse.JsonParser;
@@ -10,12 +11,17 @@ import org.slf4j.MDC;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.UUID;
 
 public class OpenIdConnectServlet extends HttpServlet {
@@ -80,12 +86,7 @@ public class OpenIdConnectServlet extends HttpServlet {
         String domainHint = req.getParameter("domain_hint");
 
         URL authenticationRequest = new URL(authorizationEndpoint + "?"
-                + "client_id=" + clientId + "&"
-                + "redirect_uri=" + redirectUri + "&"
-                + "response_type=" + "code" + "&"
-                + "scope=" + scope + "&"
-                + "state=" + loginState
-                + (domainHint != null ? "&domain_hint=" + domainHint : "")
+                // TODO: Put in what's needed for a successful request here!
         );
 
         logger.debug("Generating authentication request: {}", authenticationRequest);
@@ -122,7 +123,7 @@ public class OpenIdConnectServlet extends HttpServlet {
         if (error != null) {
             resp.setContentType("text/html");
 
-            String errorDescription = req.getParameter("error_description");
+            String errorDescription = null; // TODO Where can you find the error description?
 
             resp.getWriter().write("<html>"
                     + "<h2>Step 2b: Client received callback with error!</h2>"
@@ -133,11 +134,9 @@ public class OpenIdConnectServlet extends HttpServlet {
             return;
         }
 
-        String payload = "client_id=" + clientId
-                + "&" + "client_secret=" + "xxxxxxx"
-                + "&" + "redirect_uri=" + redirectUri
-                + "&" + "code=" + code
-                + "&" + "grant_type=" + "authorization_code";
+        String payload = null; // TODO Generate the payload
+
+        payload = payload.replaceAll("client_secret=[^&]*&", "client_secret=xxxxxxx&");
 
         resp.setContentType("text/html");
 
@@ -188,11 +187,13 @@ public class OpenIdConnectServlet extends HttpServlet {
 
     private void setupSession(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         JsonObject tokenResponse = JsonParser.parseToObject((String) req.getSession().getAttribute("token_response"));
+        String accessToken = null; // TODO where can you find the access token?
+        String idToken = null; // TODO: Where can you find the id token?
+        Optional<String> refreshToken = null; // TODO: Where can you find the refresh token?
         logger.debug("Access token: {} expires {}",
-                tokenResponse.requiredString("access_token"),
+                accessToken,
                 tokenResponse.stringValue("expires_on").orElse(""));
 
-        String idToken = tokenResponse.requiredString("id_token");
         logger.debug("Decoding session from JWT: {}", idToken);
         JwtToken idTokenJwt = new JwtToken(idToken, true);
         logger.debug("Validated token with iss={} sub={} aud={}", idTokenJwt.iss(), idTokenJwt.sub(), idTokenJwt.aud());
@@ -205,8 +206,8 @@ public class OpenIdConnectServlet extends HttpServlet {
 
         UserSession.OpenIdConnectSession session = new UserSession.OpenIdConnectSession();
         session.setControlUrl(req.getServletPath());
-        session.setAccessToken(tokenResponse.requiredString("access_token"));
-        session.setRefreshToken(tokenResponse.stringValue("refresh_token"));
+        session.setAccessToken(accessToken);
+        session.setRefreshToken(refreshToken);
         session.setIdToken(idTokenJwt);
         session.setEndSessionEndpoint(configuration.getEndSessionEndpoint());
 
@@ -230,11 +231,7 @@ public class OpenIdConnectServlet extends HttpServlet {
                 .filter(s -> s.getControlUrl().equals(req.getServletPath()))
                 .findAny().orElseThrow(() -> new IllegalArgumentException("Can't refresh non-existing session"));
 
-        String payload = "client_id=" + clientId
-                + "&" + "client_secret=" + clientSecret
-                + "&" + "redirect_uri=" + redirectUri
-                + "&" + "refresh_token=" + idProviderSession.getRefreshToken()
-                + "&" + "grant_type=" + "refresh_token";
+        String payload = "TODO"; // TODO How do you request a token with a refresh token
         HttpURLConnection connection = (HttpURLConnection) tokenEndpoint.openConnection();
         connection.setDoOutput(true);
         connection.setDoInput(true);
@@ -244,7 +241,8 @@ public class OpenIdConnectServlet extends HttpServlet {
         JsonObject jsonObject = JsonParser.parseToObject(connection);
         logger.debug("Refreshed session: {}", jsonObject);
 
-        idProviderSession.setAccessToken(jsonObject.requiredString("access_token"));
+        String accessToken = null; // TODO: How do you get the access token?
+        idProviderSession.setAccessToken(accessToken);
     }
 
     private JsonObject jsonParserParseToObject(URL endpoint, HttpAuthorization authorization) throws IOException {

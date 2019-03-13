@@ -1,4 +1,4 @@
-package com.johannesbrodwall.identity;
+package com.johannesbrodwall.identity.jwt;
 
 public class JwtTokenValidationException extends RuntimeException {
     public JwtTokenValidationException(String message) {

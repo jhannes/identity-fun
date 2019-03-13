@@ -18,6 +18,7 @@ public class IdentityServer {
     private static Logger logger = LoggerFactory.getLogger(IdentityServer.class);
 
     private Server server = new Server();
+    private Properties properties = new Properties();
 
 
     public static void main(String[] args) throws Exception {
@@ -31,6 +32,10 @@ public class IdentityServer {
     }
 
     private void setupServer() throws IOException {
+        try (FileReader reader = new FileReader("oauth2-providers.properties")) {
+            properties.load(reader);
+        }
+
         server.addLifeCycleListener(Server.STOP_ON_FAILURE);
         server.addConnector(createConnector());
         server.setHandler(createWebAppContext());
@@ -51,12 +56,27 @@ public class IdentityServer {
         webAppContext.setBaseResource(Resource.newClassPathResource("/webapp-identity"));
         webAppContext.getInitParams().put("org.eclipse.jetty.servlet.Default.useFileMappedBuffer", "false");
 
+        // TODO: Johannes: Provide URLs for where to set up these kinds of applications
+        // TODO Create your Google application in https://console.developers.google.com/apis/credentials
+        //  put `google.client_id`, `google.client_secret` and `google.redirect_uri` into `oauth2-providers.properties`
         addOpenIdConnectServlet(webAppContext, "/id/google/*", "google", "https://accounts.google.com");
+        // TODO Create your Microsoft application in https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+        //  Put the `azure.client_id`, `azure.client_secret` and `azure.redirect_uri` into `oauth2-providers.properties`
         addOpenIdConnectServlet(webAppContext, "/id/microsoft/*", "azure", "https://login.microsoftonline.com/common");
+        // TODO Ask Johannes for crentials for a test application
         addOpenIdConnectServlet(webAppContext, "/idporten/*", "idporten", "https://oidc-ver1.difi.no/idporten-oidc-provider");
-        webAppContext.addServlet(new ServletHolder(createSlackIdProviderServlet()), "/id/slack/*");
-        webAppContext.addServlet(new ServletHolder(new UserServlet()), "/user");
 
+        // TODO Create your Slack app at https://api.slack.com/apps
+        //  Put slack.client_id` and `slack.client_secret` in `oauth2-providers.properties`
+        //  Select "OAuth & Permissions" in the menu and add your Redirect URL here. Put `slack.redirect_id` in `oauth2-providers.properties`
+        //  Put `slack.authorization_endpoint=https://<team>.slack.com/oauth/authorize` in `oauth2-providers.properties`
+        //  Put `slack.token_endpoint=https://slack.com/api/oauth.access` in `oauth2-providers.properties`
+        String authorizationEndpoint = properties.getProperty("slack.authorization_endpoint");
+        String tokenEndpoint = properties.getProperty("slack.token_endpoint");
+        String scope = "groups:read";
+        webAppContext.addServlet(new ServletHolder(new Oauth2Servlet(authorizationEndpoint, tokenEndpoint, scope, getOauth2ClientConfiguration("slack"))), "/id/slack/*");
+
+        webAppContext.addServlet(new ServletHolder(new UserServlet()), "/user");
 
         return webAppContext;
     }
@@ -66,21 +86,7 @@ public class IdentityServer {
         webAppContext.addServlet(new ServletHolder(servlet), pathSpec);
     }
 
-    private Oauth2Servlet createSlackIdProviderServlet() throws IOException {
-        // Setup https://api.slack.com/apps
-        String authorizationEndpoint = "https://javaBin-test.slack.com/oauth/authorize";
-        String tokenEndpoint = "https://slack.com/api/oauth.access";
-        String scope = "groups:read";
-        return new Oauth2Servlet(authorizationEndpoint, tokenEndpoint, scope, getOauth2ClientConfiguration("slack"));
-    }
-
     private Oauth2ClientConfiguration getOauth2ClientConfiguration(String providerName) throws IOException {
-        Properties properties = new Properties();
-
-        try (FileReader reader = new FileReader("oauth2-providers.properties")) {
-            properties.load(reader);
-        }
-
         Oauth2ClientConfiguration configuration = new Oauth2ClientConfiguration(providerName);
         configuration.setClientId(properties.getProperty(providerName + ".client_id"));
         configuration.setClientSecret(properties.getProperty(providerName + ".client_secret"));

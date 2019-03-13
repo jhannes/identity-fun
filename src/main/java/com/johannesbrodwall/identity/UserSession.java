@@ -1,5 +1,6 @@
 package com.johannesbrodwall.identity;
 
+import com.johannesbrodwall.identity.jwt.JwtToken;
 import com.johannesbrodwall.identity.util.BearerToken;
 import com.johannesbrodwall.identity.util.HttpAuthorization;
 import org.jsonbuddy.JsonObject;

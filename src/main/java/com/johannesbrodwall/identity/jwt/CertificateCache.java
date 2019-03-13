@@ -1,4 +1,4 @@
-package com.johannesbrodwall.identity;
+package com.johannesbrodwall.identity.jwt;
 
 import org.jsonbuddy.JsonObject;
 import org.jsonbuddy.parse.JsonParser;

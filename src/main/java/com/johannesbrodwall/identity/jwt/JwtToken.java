@@ -1,4 +1,4 @@
-package com.johannesbrodwall.identity;
+package com.johannesbrodwall.identity.jwt;
 
 import org.jsonbuddy.JsonNode;
 import org.jsonbuddy.JsonObject;
@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Optional;
 
+// TODO: Johannes - add to JSON Buddy
 public class JwtToken {
     private static final Logger logger = LoggerFactory.getLogger(JwtToken.class);
 

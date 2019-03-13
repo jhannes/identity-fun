@@ -11,14 +11,20 @@ import org.slf4j.MDC;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.UUID;
 
+// TODO: Replace similar to OpenIdConnectServlet
 public class Oauth2Servlet extends HttpServlet {
 
     private static Logger logger = LoggerFactory.getLogger(Oauth2Servlet.class);
@@ -73,11 +79,8 @@ public class Oauth2Servlet extends HttpServlet {
         req.getSession().setAttribute("loginState", loginState);
 
         URL authenticationRequest = new URL(authorizationEndpoint + "?"
-                + "client_id=" + clientId + "&"
-                + "redirect_uri=" + redirectUri + "&"
-                + "response_type=" + responseType + "&"
-                + "scope=" + scope + "&"
-                + "state=" + loginState);
+                // TODO: Put in what's needed for a successful request here!
+        );
 
         logger.debug("Generating authentication request: {}", authenticationRequest);
 
@@ -109,11 +112,8 @@ public class Oauth2Servlet extends HttpServlet {
             logger.warn("Login state DOES NOT match callback state: {} != {}", loginState, state);
         }
 
-        String payload = "client_id=" + clientId
-                + "&" + "client_secret=" + "xxxxxxx"
-                + "&" + "redirect_uri=" + redirectUri
-                + "&" + "code=" + code
-                + "&" + "grant_type=" + grantType;
+        String payload = "TODO";
+        payload = payload.replaceAll("client_secret=[^&]*&", "client_secret=xxxxxxx&");
 
         resp.setContentType("text/html");
 
@@ -164,17 +164,19 @@ public class Oauth2Servlet extends HttpServlet {
 
     private void setupSession(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         JsonObject tokenResponse = JsonParser.parseToObject((String) req.getSession().getAttribute("token_response"));
+        String accessToken = null; // TODO where can you find the access token?
+        Optional<String> refreshToken = null; // TODO: Where can you find the refresh token?
 
-        BearerToken accessToken = new BearerToken(tokenResponse.requiredString("access_token"));
+        BearerToken authentication = new BearerToken(tokenResponse.requiredString("access_token"));
 
         URL slackApiUrl = new URL("https://slack.com/api/");
 
         logger.debug("Fetching user info from : {}", new URL(slackApiUrl, "users.profile.get"));
-        JsonObject profile = jsonParserParseToObject(new URL(slackApiUrl, "users.profile.get"), accessToken).requiredObject("profile");
+        JsonObject profile = jsonParserParseToObject(new URL(slackApiUrl, "users.profile.get"), authentication).requiredObject("profile");
         logger.debug("Fetching user conversations from : {}", new URL(slackApiUrl,"conversations.list?types=private_channel,public_channel"));
         JsonObject conversations = jsonParserParseToObject(
                 new URL(slackApiUrl,"conversations.list?types=private_channel,public_channel"),
-                accessToken
+                authentication
         );
         profile.put("user.conversations", conversations);
 
@@ -182,7 +184,7 @@ public class Oauth2Servlet extends HttpServlet {
         UserSession.Oauth2ProviderSession idpSession = new UserSession.Oauth2ProviderSession();
         idpSession.setControlUrl(req.getServletPath());
         idpSession.setIssuer(new URL(authorizationEndpoint).getAuthority());
-        idpSession.setAccessToken(accessToken.toString());
+        idpSession.setAccessToken(accessToken);
         idpSession.setUserinfo(profile);
 
         UserSession.getFromSession(req).addSession(idpSession);
