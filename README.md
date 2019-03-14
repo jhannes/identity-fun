@@ -20,8 +20,27 @@ The following Postman collection has documentation and examples for you to follo
 
 ### Task 0: Make sure the application runs
 
-Create an empty file in the project named `oauth2-providers.properties`.
+Create an empty file in the project named `oauth2-providers.properties` with the following content:
+ 
+ ```
+azure.client_id=
+azure.client_secret=
+azure.redirect_uri=
 
+slack.client_id=
+slack.client_secret=
+slack.redirect_uri=
+
+google.client_id=
+google.client_secret=
+google.redirect_uri=
+
+idporten.client_id=
+idporten.client_secret=
+idporten.redirect_uri=
+ ```
+ 
+ 
 Run `com.johannesbrodwall.identity.IdentityServer` as a Java main class. The server should start on port 8080 (change IdentityServer if this port is unavailable). Go to http://localhost:8080. You should see a welcome page with the option of authorizing with several providers.
 
 Try to select Login with Google. It will generate a link that is invalid. Your task is to fix this
