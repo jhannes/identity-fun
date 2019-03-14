@@ -20,6 +20,8 @@ The following Postman collection has documentation and examples for you to follo
 
 ### Task 0: Make sure the application runs
 
+Create an empty file in the project named `oauth2-providers.properties`.
+
 Run `com.johannesbrodwall.identity.IdentityServer` as a Java main class. The server should start on port 8080 (change IdentityServer if this port is unavailable). Go to http://localhost:8080. You should see a welcome page with the option of authorizing with several providers.
 
 Try to select Login with Google. It will generate a link that is invalid. Your task is to fix this
