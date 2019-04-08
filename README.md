@@ -1,6 +1,6 @@
 # Identity fun
 
-Demonstration application to further understanding of OpenID Connect and Oauth2.
+Training application to further understanding of OpenID Connect and Oauth2. Live demo at [https://javabin-openid-demo.azurewebsites.net/](https://javabin-openid-demo.azurewebsites.net/).
 
 ## Setup
 
