@@ -2,3 +2,5 @@
 *.iml
 target/
 oauth2-providers.properties
+idporten.properties
+*.p12

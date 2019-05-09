@@ -54,7 +54,7 @@ public class IdentityServer {
         addOpenIdConnectServlet(webAppContext, "/id/google/*", "google", "https://accounts.google.com");
         addOpenIdConnectServlet(webAppContext, "/id/microsoft/*", "azure", "https://login.microsoftonline.com/common");
         addOpenIdConnectServlet(webAppContext, "/id/mssingle/*", "mssingle", "https://login.microsoftonline.com/35ccb474-2f51-4a4a-b2e0-f7faa6882b51/v2.0");
-        addOpenIdConnectServlet(webAppContext, "/idporten/*", "idporten", "https://oidc-ver1.difi.no/idporten-oidc-provider");
+        addOpenIdConnectServlet(webAppContext, "/idporten/*", "idporten", "https://oidc-ver2.difi.no/idporten-oidc-provider");
         webAppContext.addServlet(new ServletHolder(createSlackIdProviderServlet()), "/id/slack/*");
         webAppContext.addServlet(new ServletHolder(new UserServlet()), "/user");
 
