@@ -33,4 +33,10 @@ You have to go through the following steps:
 
 See the `IdPortenApiClient` client for an example.
 
+## Deployment
+
+1. `mvn clean package azure-webapp:deploy`
+2. Go to [Azure app service cmd](https://javabin-openid-demo.scm.azurewebsites.net/DebugConsole) to check logs and update configuration file
+3. Go to [Azure Portal](https://portal.azure.com) to restart server
+
 

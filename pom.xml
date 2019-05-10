@@ -86,13 +86,13 @@
             <plugin>
                 <groupId>com.microsoft.azure</groupId>
                 <artifactId>azure-webapp-maven-plugin</artifactId>
-                <version>1.5.3</version>
+                <version>1.6.0</version>
                 <configuration>
                     <resourceGroup>jz-heroes</resourceGroup>
                     <appName>javabin-openid-demo</appName>
                     <region>westeurope</region>
                     <pricingTier>F1 </pricingTier>
-                    <javaVersion>1.8</javaVersion>
+                    <javaVersion>11</javaVersion>
                     <allowTelemetry>true</allowTelemetry>
                     <resources>
                         <resource>

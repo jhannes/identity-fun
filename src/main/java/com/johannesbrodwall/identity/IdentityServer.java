@@ -5,6 +5,7 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.resource.Resource;
 import org.eclipse.jetty.webapp.WebAppContext;
+import org.logevents.extend.servlets.LogEventsServlet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +22,7 @@ public class IdentityServer {
 
 
     public static void main(String[] args) throws Exception {
+        Thread.setDefaultUncaughtExceptionHandler((thread,e) -> logger.error("{} uncaught exception", thread, e));
         new IdentityServer().start();
     }
 
@@ -57,6 +59,8 @@ public class IdentityServer {
         addOpenIdConnectServlet(webAppContext, "/id/idporten/*", "idporten", "https://oidc-ver2.difi.no/idporten-oidc-provider");
         webAppContext.addServlet(new ServletHolder(createSlackIdProviderServlet()), "/id/slack/*");
         webAppContext.addServlet(new ServletHolder(new UserServlet()), "/user");
+
+        webAppContext.addServlet(new ServletHolder(new LogEventsServlet()), "/logs/*");
 
 
         return webAppContext;
