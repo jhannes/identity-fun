@@ -22,14 +22,31 @@ import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.cert.X509Certificate;
+import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
+/**
+ * Demonstrates the use of a certificate to generate a client-generated JWT, exchanging it
+ * for an API JTW and using this JWT as a bearer token to make API calls. Will try to ensure
+ * that exactly one client exists with the client_name "javabin_openid_demo"
+ * <p>
+ *     Uses a <code>idporten.properties</code> file with the following values:
+ * </p>
+ * <pre>
+ * keystore.file=&lt;path to the authentication pkcs12 keystore file&gt;
+ * keystore.password=&lt;password for the keystore file&gt;
+ * issuer=&lt;the client_id issues by ID-porten&gt;
+ * idporten.oidc_endpoint=&lt;normally https://oidc.difi.no/idporten-oidc-provider/ or https://oidc-ver2.difi.no/idporten-oidc-provider/&gt;
+ * idporten.integrasjon_endpoint=&lt;normally https://integrasjon.difi.no or https://integrasjon-ver2.difi.no&gt;
+ * </pre>
+ */
 public class IdPortenApiClient {
 
     private static final Logger logger = LoggerFactory.getLogger(IdPortenApiClient.class);
@@ -57,25 +74,69 @@ public class IdPortenApiClient {
         IdPortenApiClient idPortenApiClient = new IdPortenApiClient(oidcEndpoint, issuer, certificate, privateKey);
 
         URL apiEndpoint = new URL(properties.getProperty("idporten.integrasjon_endpoint"));
+
+        List<String> clientIds = idPortenApiClient.parseToJsonArray(new URL(apiEndpoint, "/clients"))
+                .objectStream()
+                .filter(o -> o.requiredString("client_name").equals("javabin_openid_demo"))
+                .sorted(Comparator.comparing((JsonObject o) -> ZonedDateTime.parse(o.requiredString("created"))).reversed())
+                .map(o -> o.requiredString("client_id"))
+                .collect(Collectors.toList());
+        logger.info("First client id {}", clientIds.stream().findFirst());
+        logger.info("Client_ids {}", clientIds.stream().skip(1).collect(Collectors.toList()));
+
+        clientIds.stream().findFirst().ifPresentOrElse(
+                clientId -> idPortenApiClient.updateClient(apiEndpoint, clientId),
+                () -> idPortenApiClient.createClient(apiEndpoint));
+        clientIds.stream().skip(1)
+                .forEach(clientId -> idPortenApiClient.deleteClient(apiEndpoint, clientId));
         idPortenApiClient.listClients(apiEndpoint);
-        /*
-        idPortenApiClient.createClient(apiEndpoint,"javabin_openid_demo",
-                Arrays.asList("http://localhost:8080/id/idporten/oauth2callback",
-                        "http://localhost:8080/idporten/oauth2callback",
-                        "https://javabin-openid-demo.azurewebsites.net/id/idporten/oauth2callback"));
-                        */
     }
 
-    private void createClient(URL apiEndpoint, String clientName, List<String> redirectUris) throws IOException {
+    private void deleteClient(URL apiEndpoint, String clientId) {
+        try {
+            HttpURLConnection conn = (HttpURLConnection) new URL(apiEndpoint, "clients/" + clientId).openConnection();
+            conn.setRequestMethod("DELETE");
+            accessToken.authorize(conn);
+            logger.debug("DELETE {}", new URL(apiEndpoint, "clients/" + clientId));
+            verifySuccess(conn);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void createClient(URL apiEndpoint) {
+
+    }
+
+    private void updateClient(URL apiEndpoint, String clientId) {
         JsonObject clientObject = new JsonObject()
-                .put("client_name", clientName)
-                .put("client_id", clientName)
-                .put("description", clientName)
+                .put("client_name", "javabin_openid_demo")
+                .put("client_id", "javabin_openid_demo")
+                .put("description", "javabin_openid_demo")
                 .put("scopes", new JsonArray().add("openid").add("profile"))
-                .put("redirect_uris", redirectUris);
-        URL url = new URL(apiEndpoint, "clients");
-        JsonNode result = postJson(clientObject, url);
-        logger.info("POST {} Response: {}", url, result);
+                .put("redirect_uris", Arrays.asList(
+                        "http://localhost:8080/id/idporten/oauth2callback",
+                        "http://localhost:8080/idporten/oauth2callback",
+                        "https://javabin-openid-demo.azurewebsites.net/id/idporten/oauth2callback"))
+                .put("post_logout_uris", Arrays.asList(
+                        "https://javabin-openid-demo.azurewebsites.net/id/idporten/logout"))
+                .put("authorization_lifetime", 0)
+                .put("access_token_lifetime", 0)
+                .put("refresh_token_lifetime", 0)
+                .put("client_type", "CONFIDENTIAL")
+                .put("token_reference", "OPAQUE")
+                .put("refresh_token_usage", "ONETIME")
+                .put("frontchannel_logout_session_required", false)
+                .put("force_pkce", false)
+                .put("client_uri", "")
+                ;
+        try {
+            URL url = new URL(apiEndpoint, "clients/" + clientId);
+            JsonNode result = postJson(clientObject, url, "PUT");
+            logger.info("PUT {} Response: {}", url, result);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void listClients(URL apiEndpoint) throws IOException {
@@ -100,7 +161,7 @@ public class IdPortenApiClient {
 
         URL tokenEndpoint = new URL(oidcEndpoint, "token");
         String payload =
-                "grant_type=" + URLEncoder.encode("urn:ietf:params:oauth:grant-type:jwt-bearer", UTF_8)
+                "grant_type=" + URLEncoder.encode("urn:ietf:params:oauth:grant-type:jwt-bearer", "utf8")
                 + "&assertion=" + organizationJwt;
         HttpURLConnection conn = (HttpURLConnection) tokenEndpoint.openConnection();
         conn.setRequestMethod("POST");
@@ -126,10 +187,10 @@ public class IdPortenApiClient {
         return Base64.getUrlEncoder().encodeToString(jsonObject.toJson().getBytes());
     }
 
-    private JsonNode postJson(JsonObject object, URL url) throws IOException {
+    private JsonNode postJson(JsonObject object, URL url, String method) throws IOException {
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         accessToken.authorize(conn);
-        conn.setRequestMethod("POST");
+        conn.setRequestMethod(method);
         conn.setDoOutput(true);
         conn.setRequestProperty("Content-Type", "application/json");
         try (OutputStream outputStream = conn.getOutputStream()) {
@@ -140,7 +201,6 @@ public class IdPortenApiClient {
             return JsonParser.parse(input);
         }
     }
-
 
     private JsonArray parseToJsonArray(URL url) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
