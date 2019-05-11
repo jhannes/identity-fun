@@ -176,15 +176,15 @@ public class IdPortenApiClient {
     }
 
     private static String createSignedJwt(JsonObject jwtHeader, JsonObject jwtPayload, PrivateKey privateKey) throws GeneralSecurityException {
-        String organizationJwt = base64(jwtHeader) + "." + base64(jwtPayload);
+        Base64.Encoder base64Encoder = Base64.getUrlEncoder();
+        String jwtContent =
+                base64Encoder.encodeToString(jwtHeader.toJson().getBytes())
+                + "."
+                + base64Encoder.encodeToString(jwtPayload.toJson().getBytes());
         Signature signature = Signature.getInstance("SHA256withRSA");
         signature.initSign(privateKey);
-        signature.update(organizationJwt.getBytes());
-        return organizationJwt + "." + Base64.getUrlEncoder().encodeToString(signature.sign());
-    }
-
-    private static String base64(JsonObject jsonObject) {
-        return Base64.getUrlEncoder().encodeToString(jsonObject.toJson().getBytes());
+        signature.update(jwtContent.getBytes());
+        return jwtContent + "." + base64Encoder.encodeToString(signature.sign());
     }
 
     private JsonNode postJson(JsonObject object, URL url, String method) throws IOException {

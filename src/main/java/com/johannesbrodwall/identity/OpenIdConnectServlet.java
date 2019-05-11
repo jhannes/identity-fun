@@ -91,15 +91,21 @@ public class OpenIdConnectServlet extends HttpServlet {
         logger.debug("Generating authentication request: {}", authenticationRequest);
 
         resp.setContentType("text/html");
-        resp.getWriter().write("<html>" +
-                "<h2>Step 1: Redirect to authorization endpoint</h2>" +
-                "<div><a href='" + authenticationRequest + "'>authenticate at " + authorizationEndpoint + "</a></div>" +
-                "<div>" +
-                "Normally your app would redirect directly to the following URL: <br />" +
-                "<code>" +
-                authenticationRequest.toString().replaceAll("[?&]", "<br />&nbsp;&nbsp;&nbsp;&nbsp;$0") +
-                "</code>" +
-                "</div></html>");
+
+        resp.getWriter().write("<!DOCTYPE html>\n"
+                        + "<html>"
+                        + "<head>"
+                        + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+                        + "</head>"
+                        + "<body>"
+                        + "<h2>Step 1: Redirect to authorization endpoint</h2>"
+                        + "<div><a href='" + authenticationRequest + "'>authenticate at " + authorizationEndpoint + "</a></div>"
+                        + "<div>"
+                        + "Normally your app would redirect directly to the following URL: <br />"
+                        + "<code>"
+                        + authenticationRequest.toString().replaceAll("[?&]", "<br />&nbsp;&nbsp;&nbsp;&nbsp;$0")
+                        + "</code>"
+                        + "</div></body></html>");
     }
 
     private void oauth2callback(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -124,11 +130,17 @@ public class OpenIdConnectServlet extends HttpServlet {
 
             String errorDescription = req.getParameter("error_description");
 
-            resp.getWriter().write("<html>"
+            resp.getWriter().write("<!DOCTYPE html>\n"
+                    + "<html>"
+                    + "<head>"
+                    + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+                    + "</head>"
+                    + "<body>"
                     + "<h2>Step 2b: Client received callback with error!</h2>"
                     + "<div>Error: <code>" + error + "</code></div>"
                     + (errorDescription != null ? "<div>Error description: <code>" + errorDescription + "</code></div>" : "")
                     + "<div><a href='/'>Front page</a></div>"
+                    + "</body>"
                     + "</html>");
             return;
         }
@@ -141,15 +153,21 @@ public class OpenIdConnectServlet extends HttpServlet {
 
         resp.setContentType("text/html");
 
-        resp.getWriter().write("<html>" +
-                "<h2>Step 2: Client received callback with code</h2>" +
-                "<div><a href='" + req.getServletPath() + "/token?" + payload + "'>fetch token with POST to " + tokenEndpoint + "</a></div>" +
-                "<div>" +
-                "Normally your app would directly perform a POST to <code>" + tokenEndpoint + "</code> with this payload:<br />" +
-                "<code>&nbsp;&nbsp;&nbsp;&nbsp;" +
-                payload.replaceAll("[?&]", "<br />&nbsp;&nbsp;&nbsp;&nbsp;$0") +
-                "</code>" +
-                "</div></html>");
+
+        resp.getWriter().write("<!DOCTYPE html>\n"
+                + "<html>"
+                + "<head>"
+                + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+                + "</head>"
+                + "<body>"
+                + "<h2>Step 2: Client received callback with code</h2>"
+                + "<div><a href='" + req.getServletPath() + "/token?" + payload + "'>fetch token with POST to " + tokenEndpoint + "</a></div>"
+                + "<div>"
+                + "Normally your app would directly perform a POST to <code>" + tokenEndpoint + "</code> with this payload:<br />"
+                + "<code>&nbsp;&nbsp;&nbsp;&nbsp;"
+                + payload.replaceAll("[?&]", "<br />&nbsp;&nbsp;&nbsp;&nbsp;$0")
+                + "</code>"
+                + "</div></body></html>");
     }
 
     private void getToken(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -174,7 +192,13 @@ public class OpenIdConnectServlet extends HttpServlet {
         logger.debug("Token response: {}", response);
         req.getSession().setAttribute("token_response", response);
         resp.setContentType("text/html");
-        resp.getWriter().write("<html>"
+
+        resp.getWriter().write("<!DOCTYPE html>\n"
+                + "<html>"
+                + "<head>"
+                + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+                + "</head>"
+                + "<body>"
                 + "<h2>Step 3: Process token</h2>"
                 + "<div>This was the response from " + tokenEndpoint + "</div>"
                 + "<pre>" + response + "</pre>"
@@ -183,6 +207,7 @@ public class OpenIdConnectServlet extends HttpServlet {
                         + "<div><a href='" + req.getServletPath() + "/session'>Create session</a></div>"
                     : "")
                 + "<div><a href='/'>Front page</a></div>"
+                + "</body>"
                 + "</html>");
     }
 
