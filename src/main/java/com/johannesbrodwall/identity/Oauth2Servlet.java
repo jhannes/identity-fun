@@ -19,7 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.UUID;
 
-public class Oauth2Servlet extends HttpServlet {
+public abstract class Oauth2Servlet extends HttpServlet {
 
     private static Logger logger = LoggerFactory.getLogger(Oauth2Servlet.class);
 
@@ -166,18 +166,7 @@ public class Oauth2Servlet extends HttpServlet {
         JsonObject tokenResponse = JsonParser.parseToObject((String) req.getSession().getAttribute("token_response"));
 
         BearerToken accessToken = new BearerToken(tokenResponse.requiredString("access_token"));
-
-        URL slackApiUrl = new URL("https://slack.com/api/");
-
-        logger.debug("Fetching user info from : {}", new URL(slackApiUrl, "users.profile.get"));
-        JsonObject profile = jsonParserParseToObject(new URL(slackApiUrl, "users.profile.get"), accessToken).requiredObject("profile");
-        logger.debug("Fetching user conversations from : {}", new URL(slackApiUrl,"conversations.list?types=private_channel,public_channel"));
-        JsonObject conversations = jsonParserParseToObject(
-                new URL(slackApiUrl,"conversations.list?types=private_channel,public_channel"),
-                accessToken
-        );
-        profile.put("user.conversations", conversations);
-
+        JsonObject profile = fetchUserProfile(accessToken);
 
         UserSession.Oauth2ProviderSession idpSession = new UserSession.Oauth2ProviderSession();
         idpSession.setControlUrl(req.getServletPath());
@@ -190,12 +179,13 @@ public class Oauth2Servlet extends HttpServlet {
         resp.sendRedirect("/");
     }
 
-    private JsonObject jsonParserParseToObject(URL endpoint, HttpAuthorization authorization) throws IOException {
+    protected abstract JsonObject fetchUserProfile(BearerToken accessToken) throws IOException;
+
+    JsonObject jsonParserParseToObject(URL endpoint, HttpAuthorization authorization) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) endpoint.openConnection();
         authorization.authorize(connection);
         return JsonParser.parseToObject(connection);
     }
-
 
     private String toString(InputStream inputStream) throws IOException {
         StringBuilder responseBuffer = new StringBuilder();

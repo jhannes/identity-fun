@@ -19,6 +19,7 @@ public class IdentityServer {
     private static Logger logger = LoggerFactory.getLogger(IdentityServer.class);
 
     private Server server = new Server();
+    private Properties properties = new Properties();
 
 
     public static void main(String[] args) throws Exception {
@@ -27,6 +28,9 @@ public class IdentityServer {
     }
 
     private void start() throws Exception {
+        try (FileReader reader = new FileReader("oauth2-providers.properties")) {
+            properties.load(reader);
+        }
         setupServer();
         server.start();
         logger.warn("Started {}", server.getURI());
@@ -55,10 +59,12 @@ public class IdentityServer {
 
         addOpenIdConnectServlet(webAppContext, "/id/google/*", "google", "https://accounts.google.com");
         addOpenIdConnectServlet(webAppContext, "/id/microsoft/*", "azure", "https://login.microsoftonline.com/common");
-        addOpenIdConnectServlet(webAppContext, "/id/mssingle/*", "mssingle", "https://login.microsoftonline.com/35ccb474-2f51-4a4a-b2e0-f7faa6882b51/v2.0");
+        addOpenIdConnectServlet(webAppContext, "/id/mssingle/*", "mssingle", properties.getProperty("mssingle.issuer_url"));
         addOpenIdConnectServlet(webAppContext, "/id/idporten/*", "idporten", "https://oidc-ver2.difi.no/idporten-oidc-provider");
         webAppContext.addServlet(new ServletHolder(createSlackIdProviderServlet()), "/id/slack/*");
         webAppContext.addServlet(new ServletHolder(new UserServlet()), "/user");
+
+        webAppContext.addServlet(new ServletHolder(new ConfigurationServlet(properties)), "/config/*");
 
         webAppContext.addServlet(new ServletHolder(new LogEventsServlet()), "/logs/*");
 
@@ -71,27 +77,19 @@ public class IdentityServer {
         webAppContext.addServlet(new ServletHolder(servlet), pathSpec);
     }
 
+    // Setup https://api.slack.com/apps
     private Oauth2Servlet createSlackIdProviderServlet() throws IOException {
-        // Setup https://api.slack.com/apps
-        String authorizationEndpoint = "https://javaBin-test.slack.com/oauth/authorize";
-        String tokenEndpoint = "https://slack.com/api/oauth.access";
-        String scope = "groups:read";
-        return new Oauth2Servlet(authorizationEndpoint, tokenEndpoint, scope, getOauth2ClientConfiguration("slack"));
+        return new SlackOauth2Servlet(
+                properties.getProperty("slack.authorization_endpoint"),
+                getOauth2ClientConfiguration("slack")
+        );
     }
 
     private Oauth2ClientConfiguration getOauth2ClientConfiguration(String providerName) throws IOException {
-        Properties properties = new Properties();
-
-        try (FileReader reader = new FileReader("oauth2-providers.properties")) {
-            properties.load(reader);
-        }
-
         Oauth2ClientConfiguration configuration = new Oauth2ClientConfiguration(providerName);
         configuration.setClientId(properties.getProperty(providerName + ".client_id"));
         configuration.setClientSecret(properties.getProperty(providerName + ".client_secret"));
         configuration.setRedirectUri(properties.getProperty(providerName + ".redirect_uri"));
         return configuration;
     }
-
-
 }
