@@ -75,20 +75,21 @@ public class IdPortenApiClient {
 
         URL apiEndpoint = new URL(properties.getProperty("idporten.integrasjon_endpoint"));
 
-        List<String> clientIds = idPortenApiClient.parseToJsonArray(new URL(apiEndpoint, "/clients"))
+        String clientName = "javabin_public_openid_demo";
+        List<JsonObject> clients = idPortenApiClient.parseToJsonArray(new URL(apiEndpoint, "/clients"))
                 .objectStream()
-                .filter(o -> o.requiredString("client_name").equals("javabin_openid_demo"))
+                .filter(o -> o.requiredString("client_name").equals(clientName))
                 .sorted(Comparator.comparing((JsonObject o) -> ZonedDateTime.parse(o.requiredString("created"))).reversed())
-                .map(o -> o.requiredString("client_id"))
                 .collect(Collectors.toList());
-        logger.info("First client id {}", clientIds.stream().findFirst());
-        logger.info("Client_ids {}", clientIds.stream().skip(1).collect(Collectors.toList()));
+        logger.info("First client {}", clients.stream().map(o -> o.toIndentedJson( "  ")).findFirst());
+        logger.info("Client_ids {}", clients.stream().skip(1).map(o -> o.requiredString("client_id")).collect(Collectors.toList()));
 
-        clientIds.stream().findFirst().ifPresentOrElse(
-                clientId -> idPortenApiClient.updateClient(apiEndpoint, clientId),
-                () -> idPortenApiClient.createClient(apiEndpoint));
-        clientIds.stream().skip(1)
-                .forEach(clientId -> idPortenApiClient.deleteClient(apiEndpoint, clientId));
+        clients.stream().findFirst().ifPresentOrElse(
+                client -> idPortenApiClient.updateClient(apiEndpoint, client.requiredString("client_id")),
+                () -> idPortenApiClient.createClient(apiEndpoint, clientName));
+
+        clients.stream().skip(1)
+                .forEach(client -> idPortenApiClient.deleteClient(apiEndpoint, client.requiredString("client_id")));
         idPortenApiClient.listClients(apiEndpoint);
     }
 
@@ -104,8 +105,31 @@ public class IdPortenApiClient {
         }
     }
 
-    private void createClient(URL apiEndpoint) {
-
+    private void createClient(URL apiEndpoint, String clientName) {
+        JsonObject clientObject = new JsonObject()
+                .put("client_name", clientName)
+                .put("client_id", clientName)
+                .put("description", clientName)
+                .put("scopes", new JsonArray().add("openid").add("profile"))
+                .put("redirect_uris", Arrays.asList(
+                        "http://localhost:8080/fragments/idporten-oauth2callback.html",
+                        "https://javabin-openid-demo.azurewebsites.net/fragments/idporten-oauth2callback.html"))
+                .put("post_logout_uris", Arrays.asList(
+                        "https://javabin-openid-demo.azurewebsites.net/id/idporten/logout"))
+                .put("client_type", "PUBLIC")
+                .put("token_reference", "OPAQUE")
+                .put("refresh_token_usage", "ONETIME")
+                .put("frontchannel_logout_session_required", false)
+                .put("force_pkce", false)
+                .put("client_uri", "")
+                ;
+        try {
+            URL url = new URL(apiEndpoint, "clients/");
+            JsonNode result = postJson(clientObject, url, "POST");
+            logger.info("POST {} Response: {}", url, result);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void updateClient(URL apiEndpoint, String clientId) {
@@ -120,9 +144,6 @@ public class IdPortenApiClient {
                         "https://javabin-openid-demo.azurewebsites.net/id/idporten/oauth2callback"))
                 .put("post_logout_uris", Arrays.asList(
                         "https://javabin-openid-demo.azurewebsites.net/id/idporten/logout"))
-                .put("authorization_lifetime", 0)
-                .put("access_token_lifetime", 0)
-                .put("refresh_token_lifetime", 0)
                 .put("client_type", "CONFIDENTIAL")
                 .put("token_reference", "OPAQUE")
                 .put("refresh_token_usage", "ONETIME")
