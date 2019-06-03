@@ -20,6 +20,7 @@ public class IdentityServer {
 
     private Server server = new Server();
     private Properties properties = new Properties();
+    private Properties publicClientProperties = new Properties();
 
 
     public static void main(String[] args) throws Exception {
@@ -30,6 +31,9 @@ public class IdentityServer {
     private void start() throws Exception {
         try (FileReader reader = new FileReader("oauth2-providers.properties")) {
             properties.load(reader);
+        }
+        try (FileReader reader = new FileReader("oauth2-public-providers.properties")) {
+            publicClientProperties.load(reader);
         }
         setupServer();
         server.start();
@@ -59,12 +63,13 @@ public class IdentityServer {
 
         addOpenIdConnectServlet(webAppContext, "/id/google/*", "google", "https://accounts.google.com");
         addOpenIdConnectServlet(webAppContext, "/id/microsoft/*", "azure", "https://login.microsoftonline.com/common");
-        addOpenIdConnectServlet(webAppContext, "/id/mssingle/*", "mssingle", properties.getProperty("mssingle.issuer_url"));
+        addOpenIdConnectServlet(webAppContext, "/id/mssingle/*", "mssingle", properties.getProperty("mssingle.issuer_uri"));
         addOpenIdConnectServlet(webAppContext, "/id/idporten/*", "idporten", "https://oidc-ver2.difi.no/idporten-oidc-provider");
         webAppContext.addServlet(new ServletHolder(createSlackIdProviderServlet()), "/id/slack/*");
         webAppContext.addServlet(new ServletHolder(new UserServlet()), "/user");
 
-        webAppContext.addServlet(new ServletHolder(new ConfigurationServlet(properties)), "/config/*");
+
+        webAppContext.addServlet(new ServletHolder(new ConfigurationServlet(publicClientProperties)), "/config/*");
 
         webAppContext.addServlet(new ServletHolder(new LogEventsServlet()), "/logs/*");
 

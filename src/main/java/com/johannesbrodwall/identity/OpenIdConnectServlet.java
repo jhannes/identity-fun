@@ -10,11 +10,16 @@ import org.slf4j.MDC;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.UUID;
 
@@ -64,6 +69,8 @@ public class OpenIdConnectServlet extends HttpServlet {
                 setupSession(req, resp);
             } else if (action.equals("refresh")) {
                 refreshAccessToken(req);
+            } else if (action.equals("verify")) {
+                verifyIdToken(req, resp);
             } else if (action.equals("logout")) {
                 logoutSession(req, resp);
             } else {
@@ -270,6 +277,29 @@ public class OpenIdConnectServlet extends HttpServlet {
         logger.debug("Refreshed session: {}", jsonObject);
 
         idProviderSession.setAccessToken(jsonObject.requiredString("access_token"));
+    }
+
+    private void verifyIdToken(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        JwtToken idTokenJwt = new JwtToken(req.getParameter("id_token"), false);
+        try {
+            idTokenJwt.safeVerifySignature();
+        } catch (Exception e) {
+            resp.getWriter().println("Signature failed: " + e);
+            return;
+        }
+        try {
+            idTokenJwt.verifyTimeValidity(Instant.now());
+        } catch (Exception e) {
+            resp.getWriter().println("Token time validity check failed: " + e);
+            return;
+        }
+
+        if (!configuration.isMatchingIssuer(idTokenJwt)) {
+            resp.getWriter().println("Invalid issuer (was " + idTokenJwt.iss() + ", but wanted " + configuration.getIssuer() + ")");
+            return;
+        }
+
+        resp.getWriter().println("Token valid");
     }
 
     private JsonObject jsonParserParseToObject(URL endpoint, HttpAuthorization authorization) throws IOException {

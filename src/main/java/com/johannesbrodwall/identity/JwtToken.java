@@ -1,6 +1,5 @@
 package com.johannesbrodwall.identity;
 
-import org.jsonbuddy.JsonNode;
 import org.jsonbuddy.JsonObject;
 import org.jsonbuddy.parse.JsonParser;
 import org.slf4j.Logger;
@@ -17,19 +16,22 @@ public class JwtToken {
 
     private final JsonObject payload;
     private final JsonObject header;
-    private String token;
+    private final String[] tokenParts;
 
     public JwtToken(String token, boolean validate) {
-        this.token = token;
-        String[] tokenParts = token.split("\\.");
+        this.tokenParts = token.split("\\.");
 
         this.header = (JsonObject) JsonParser.parseFromBase64encodedString(tokenParts[0]);
         this.payload = (JsonObject) JsonParser.parseFromBase64encodedString(tokenParts[1]);
 
         if (validate) {
-            safeVerifySignature(alg(), iss(), header.requiredString("kid"), tokenParts);
+            safeVerifySignature();
             verifyTimeValidity(Instant.now());
         }
+    }
+
+    public void safeVerifySignature() {
+        safeVerifySignature(alg(), iss(), header.requiredString("kid"), tokenParts);
     }
 
     public String alg() {
@@ -96,13 +98,13 @@ public class JwtToken {
         return signature.verify(Base64.getUrlDecoder().decode(tokenValues[2]));
     }
 
-    private void verifyTimeValidity(Instant now) {
+    void verifyTimeValidity(Instant now) {
         boolean earliestTime = now.isBefore(nbf().orElse(authTime().orElse(Instant.EPOCH)));
         if (earliestTime) {
             throw new JwtTokenValidationException("JWT not valid yet! " + earliestTime + " " + payload);
         }
         if (now.isAfter(exp())) {
-            throw new JwtTokenValidationException("JWT not valid yet! " + exp() + " " + payload);
+            throw new JwtTokenValidationException("JWT expired! " + exp() + " " + payload);
         }
     }
 
@@ -149,11 +151,11 @@ public class JwtToken {
         return Instant.ofEpochSecond(payload.requiredLong("exp"));
     }
 
-    public JsonNode getPayload() {
+    public JsonObject getPayload() {
         return payload;
     }
 
-    public JsonNode getHeader() {
+    public JsonObject getHeader() {
         return header;
     }
 }

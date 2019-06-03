@@ -85,8 +85,16 @@ public class IdPortenApiClient {
         logger.info("Client_ids {}", clients.stream().skip(1).map(o -> o.requiredString("client_id")).collect(Collectors.toList()));
 
         clients.stream().findFirst().ifPresentOrElse(
-                client -> idPortenApiClient.updateClient(apiEndpoint, client.requiredString("client_id")),
-                () -> idPortenApiClient.createClient(apiEndpoint, clientName));
+                client -> idPortenApiClient.updateClient(apiEndpoint, client.requiredString("client_id"), Arrays.asList(
+                        "http://localhost:8080/fragments/oauth2callback.html",
+                        "https://javabin-openid-demo.azurewebsites.net/fragments/oauth2callback.html",
+                        "http://localhost:8080/id/idporten/oauth2callback",
+                        "https://javabin-openid-demo.azurewebsites.net/id/idporten/oauth2callback"), "PUBLIC"),
+                () -> idPortenApiClient.createClient(apiEndpoint, clientName, Arrays.asList(
+                        "http://localhost:8080/fragments/oauth2callback.html",
+                        "https://javabin-openid-demo.azurewebsites.net/fragments/oauth2callback.html",
+                        "http://localhost:8080/id/idporten/oauth2callback",
+                        "https://javabin-openid-demo.azurewebsites.net/fragments/idporten-oauth2callback.html"), "PUBLIC"));
 
         clients.stream().skip(1)
                 .forEach(client -> idPortenApiClient.deleteClient(apiEndpoint, client.requiredString("client_id")));
@@ -105,18 +113,16 @@ public class IdPortenApiClient {
         }
     }
 
-    private void createClient(URL apiEndpoint, String clientName) {
+    private void createClient(URL apiEndpoint, String clientName, List<String> redirectUris, String clientType) {
         JsonObject clientObject = new JsonObject()
                 .put("client_name", clientName)
                 .put("client_id", clientName)
                 .put("description", clientName)
                 .put("scopes", new JsonArray().add("openid").add("profile"))
-                .put("redirect_uris", Arrays.asList(
-                        "http://localhost:8080/fragments/idporten-oauth2callback.html",
-                        "https://javabin-openid-demo.azurewebsites.net/fragments/idporten-oauth2callback.html"))
+                .put("redirect_uris", redirectUris)
                 .put("post_logout_uris", Arrays.asList(
                         "https://javabin-openid-demo.azurewebsites.net/id/idporten/logout"))
-                .put("client_type", "PUBLIC")
+                .put("client_type", clientType)
                 .put("token_reference", "OPAQUE")
                 .put("refresh_token_usage", "ONETIME")
                 .put("frontchannel_logout_session_required", false)
@@ -132,19 +138,16 @@ public class IdPortenApiClient {
         }
     }
 
-    private void updateClient(URL apiEndpoint, String clientId) {
+    private void updateClient(URL apiEndpoint, String clientId, List<String> redirectUris, String clientType) {
         JsonObject clientObject = new JsonObject()
                 .put("client_name", "javabin_openid_demo")
                 .put("client_id", "javabin_openid_demo")
                 .put("description", "javabin_openid_demo")
                 .put("scopes", new JsonArray().add("openid").add("profile"))
-                .put("redirect_uris", Arrays.asList(
-                        "http://localhost:8080/id/idporten/oauth2callback",
-                        "http://localhost:8080/idporten/oauth2callback",
-                        "https://javabin-openid-demo.azurewebsites.net/id/idporten/oauth2callback"))
+                .put("redirect_uris", redirectUris)
                 .put("post_logout_uris", Arrays.asList(
                         "https://javabin-openid-demo.azurewebsites.net/id/idporten/logout"))
-                .put("client_type", "CONFIDENTIAL")
+                .put("client_type", clientType)
                 .put("token_reference", "OPAQUE")
                 .put("refresh_token_usage", "ONETIME")
                 .put("frontchannel_logout_session_required", false)

@@ -52,4 +52,12 @@ public class OpenidConfiguration {
             throw new IllegalArgumentException(e.getMessage());
         }
     }
+
+    public boolean isMatchingIssuer(JwtToken jwt) {
+        String issuer = getIssuer();
+        if (issuer.contains("{tenantid}")) {
+            issuer = getIssuer().replaceAll("\\{tenantid\\}", jwt.getPayload().requiredString("tid"));
+        }
+        return issuer.equals(jwt.iss());
+    }
 }

@@ -40,3 +40,7 @@ See the `IdPortenApiClient` client for an example.
 3. Go to [Azure Portal](https://portal.azure.com) to restart server
 
 
+## Revoking application consent
+
+* [Active Directory](https://account.activedirectory.windowsazure.com)
+* [Google](https://myaccount.google.com/permissions)

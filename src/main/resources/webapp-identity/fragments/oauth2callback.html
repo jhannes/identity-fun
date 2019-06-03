@@ -13,11 +13,8 @@
 <body>
     <h2>Step 2: Client received callback</h2>
 
-    <div id="detailsCode">
-        <div><button>Fetch token</button></div>
-
-        Normally your app would directly perform a POST to <code class="token_endpoint"></code> with this payload:<br />
-        <pre class="payload"></pre>
+    <div id="detailsState">
+        <div class="status"></div>
     </div>
 
     <div id="detailsToken">
@@ -25,56 +22,41 @@
 
         <h3>id_token decoded</h3>
         <pre class="idToken"></pre>
+
+        <button onclick="verifyToken()">
+            Verify token
+        </button>
+        <div id="verification"></div>
     </div>
 
+    <div id="detailsCode">
+        <div><button>Fetch token</button></div>
+
+        Normally your app would directly perform a POST to <code class="token_endpoint"></code> with this payload:<br />
+        <pre class="payload"></pre>
+    </div>
 
     <p><a href=".">Front page</a></p>
 </body>
+<script src="/config/idProviders"></script>
 <script>
-
-
-const idProviderConfigurations = {
-    "microsoft": {
-        "authorization_endpoint": "https://login.microsoftonline.com/common/oauth2/authorize",
-        "token_endpoint": "https://login.microsoftonline.com/common/oauth2/token",
-        "redirect_uri": "http://localhost:8080/fragments/oauth2callback.html",
-        "client_id": "55a62cf9-3f20-47e0-b61d-51f835fd5945",
-        "scope": "openid"
-    }
-};
 
 const hash = location.hash.substring(1);
 const parameters = JSON.parse('{"' + hash.replace(/&/g, '","').replace(/=/g,'":"') + '"}', function(key, value) { return key===""?value:decodeURIComponent(value) })
 
-const provider = window.localStorage.getItem("loginProvider");
-const idProviderConfig = idProviderConfigurations[provider];
-
-function receiveCode() {
-    const payload = "client_id=" + idProviderConfig.client_id +
-        "&redirect_uri=" + idProviderConfig.redirect_uri +
-        "&grant_type=authorization_code" +
-        "&code=" + parameters.code
-        ;
-
-    const details = document.getElementById("details");
-
-    details.querySelector(".token_endpoint").innerHTML = idProviderConfig.token_endpoint;
-    details.querySelector(".payload").innerHTML = payload.replace(/[&?]/g, "\n\t$&");
-    details.querySelector("button").addEventListener("click", () => fetchToken(idProviderConfig.token_endpoint, payload));
-
-    details.style.display = "block";
+const detailsState = document.getElementById("detailsState");
+const loginState = window.localStorage.getItem("loginState");
+if (loginState === parameters.state) {
+    detailsState.querySelector(".status").innerText = "Login state matches";
+} else {
+    detailsState.querySelector(".status").innerText = "Login state MISMATCH";
 }
+detailsState.style.display = "block";
+
+let provider = window.localStorage.getItem("loginProvider");
 
 function receiveIdToken() {
-    const loginState = window.localStorage.getItem("loginState");
-
     const details = document.getElementById("detailsToken");
-
-    if (loginState === parameters.state) {
-        details.querySelector(".status").innerHTML = "Login state matches";
-    } else {
-        details.querySelector(".status").innerHTML = "Login state MISMATCH";
-    }
 
     const parts = parameters.id_token.split(".");
     const idTokenDecoded = JSON.parse(atob(parts[1]));
@@ -84,9 +66,55 @@ function receiveIdToken() {
     details.style.display = "block";
 }
 
+function receiveCode() {
+    const provider = window.localStorage.getItem("loginProvider");
+    const idProviderConfig = idProviderConfigurations[provider];
+
+    const { client_id } = idProviderConfig;
+    const grant_type = "authorization_code", code = parameters.code;
+    const redirect_uri = new URL("/fragments/oauth2callback.html", document.location);
+
+    const request = {
+        client_id, redirect_uri, grant_type, code
+    };
+    const code_verifier = window.localStorage.getItem("code_verifier");
+    if (code_verifier) {
+        request.code_verifier = code_verifier;
+    }
+
+    const form = new FormData();
+    for (const key in request) {
+        form.set(key, request[key]);
+    }
+    const payload = new URLSearchParams(form).toString();
+
+    const details = document.getElementById("detailsCode");
+
+    details.querySelector(".token_endpoint").innerHTML = idProviderConfig.token_endpoint;
+    details.querySelector(".payload").innerHTML = payload.replace(/[&?]/g, "\n\t$&");
+    details.querySelector("button").addEventListener("click", () => fetchToken(idProviderConfig.token_endpoint, payload));
+
+    details.style.display = "block";
+}
+
+async function verifyToken() {
+    const verification = document.getElementById("verification");
+    verification.innerText = "";
+    const response = await fetch("/id/" + provider + "/verify?id_token=" + parameters.id_token);
+    if (!response.ok) {
+        console.log(response);
+        alert("Call failed: " + response.statusText);
+    } else {
+        const text = await response.text();
+        verification.innerText = text;
+    }
+}
+
 
 if (parameters.id_token) {
     receiveIdToken();
+} else if (parameters.code) {
+    receiveCode();
 }
 
 
