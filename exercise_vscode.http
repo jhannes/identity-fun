@@ -1,0 +1,134 @@
+# Vscode http-buffer
+# Works with the "REST Client" extension
+# To install: Press F1, type "ext install" and choose 'Extensions: Install Extensions' then search for rest-client.
+
+# ------------------------------------ Google ------------------------------------
+
+## Set up variables for your google OpenID Connect (oidc) client, see EXERCISE.md for details
+@client_id=REPLACE
+@client_secret=REPLACE
+@redirect_uri=https://my.example.com/oauth2callback
+@token_endpoint=https://oauth2.googleapis.com/token
+
+# The following request,after being updated with your client_id, should be performed manually in a web browser (ctrl+click)
+# and will stop at a request where you find the code which value you can add to the @code variable below
+# Authorization endpoint:
+GET https://accounts.google.com/o/oauth2/v2/auth?scope=profile+email+openid&response_type=code&redirect_uri=https://my.example.com/oauth2callback&client_id=REPLACE
+
+# Log in and find your code in the browser's url when the login flow halts at an "The site can't be reached" error message
+
+# The token you got in the last http request in your web browser:
+
+@code=REPLACE
+
+### Token request
+POST {{token_endpoint}} HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code
+&client_id={{client_id}}
+&client_secret={{client_secret}}
+&code={{code}}
+&redirect_uri={{redirect_uri}}
+
+
+#### Token response will contain your id_token that can be inspected at https://jwt.io/ if you paste the value into the 'encoded' section
+
+
+### BTW: Google's well-known openid configuration
+GET https://accounts.google.com/.well-known/openid-configuration
+
+# ------------------------------------ Azure  (multi-tenant)------------------------------------
+
+# Get the code:
+@client_id=REPLACE
+@client_secret=REPLACE
+@token_endpoint=https://login.microsoftonline.com/organizations/oauth2/v2.0/token
+
+# The following request,after being updated with your client_id, should be performed manually in a web browser (ctrl+click)
+# and will stop at a request where you find the code which value you can add to the @code variable below
+# Authorization endpoint:
+GET https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?scope=profile+email+openid&response_type=code&redirect_uri=https://my.example.com/oauth2callback&client_id=REPLACE
+
+@code=REPLACE
+
+
+### Token request
+POST {{token_endpoint}}
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code
+&client_id={{client_id}}
+&client_secret={{client_secret}}
+&code={{code}}
+&redirect_uri={{redirect_uri}}
+
+
+### Jwt.io (ctrl + click)
+https://jwt.io/    
+
+
+
+# ------------------------------------ Azure  (B2B)------------------------------------
+
+@client_id=REPLACE
+@client_secret=REPLACE
+@token-endpoint=https://login.microsoftonline.com/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/oauth2/v2.0/token
+
+# ^^ Find under Overview > Endpoints
+
+# The following request,after being updated with your client_id, should be performed manually in a web browser (ctrl+click)
+# and will stop at a request where you find the code which value you can add to the @code variable below
+# Authorization endpoint:
+GET https://login.microsoftonline.com/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/oauth2/v2.0/authorize?scope=profile+email+openid&response_type=code&redirect_uri=https://my.example.com/oauth2callback&client_id=REPLACE
+
+@code=REPLACE
+
+### Token request
+POST {{token_endpoint}}
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code
+&client_id={{client_id}}
+&client_secret={{client_secret}}
+&code={{code}}
+&redirect_uri={{redirect_uri}}
+
+
+### Jwt.io (ctrl + click)
+https://jwt.io/    
+
+
+### ------------------------------------ Slack - Oauth2 ------------------------------------
+
+@client_id=REPLACE
+@client_secret=REPLACE
+@token_endpoint=https://slack.com/api/oauth.access
+
+# https://<workspace>.slack.com/oauth/authorize
+# Authorization endpoint:
+GET https://<workspace>.slack.com/oauth/authorize?scope=groups:read+channels:read+users.profile:read&response_type=code&redirect_uri=https://my.example.com/oauth2callback&client_id=REPLACE
+
+@code=REPLACE
+
+### Token request
+POST {{token_endpoint}}
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code
+&client_id={{client_id}}
+&client_secret={{client_secret}}
+&code={{code}}
+&redirect_uri={{redirect_uri}}
+
+# Find the access token in the response from the token request and put in the access_token variable below:
+
+@access_token=REPLACE_W_ACCESS_TOKEN
+
+### Get basic user info from Slack
+GET https://api.slack.com/methods/users.profile.get
+Authorization: Bearer {{access_token}}
+
+### Get a list of private channels
+GET https://slack.com/api/conversations.list
+Authorization: Bearer {{access_token}}
