@@ -55,7 +55,7 @@ public class IdentityServer {
             webAppContext.setBaseResource(Resource.newResource(webAppResource));
         }
 
-        webAppContext.addEventListener(new IdentityServletListener());
+        webAppContext.addEventListener(new IdentityWebApp());
         return webAppContext;
     }
 

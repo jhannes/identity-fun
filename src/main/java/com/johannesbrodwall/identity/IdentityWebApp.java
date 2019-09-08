@@ -7,7 +7,8 @@ import javax.servlet.ServletContextListener;
 import java.util.EnumSet;
 import java.util.Map;
 
-public class IdentityServletListener implements ServletContextListener {
+public class IdentityWebApp implements ServletContextListener {
+
     private static Map<String, String> issuerUrls = Map.of(
             "google", "https://accounts.google.com",
             "azure", "https://login.microsoftonline.com/common",
