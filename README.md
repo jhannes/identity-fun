@@ -24,7 +24,6 @@ The configuration is read anew for each request, so you can update it without re
 4. [Create a Slack application](https://api.slack.com/apps) and find your crentials under Basic Information > App Credentials. Put `slack.client_id` and`slack.client_secret` in `oauth2-providers.properties`. Select "OAuth & Permissions" in the menu and add your Redirect URL here. Put `slack.redirect_id` in `oauth2-providers.properties`. See [Slack documentation](https://api.slack.com/docs/sign-in-with-slack) for details
 
 
-
 ## Why should you care about OpenID Connect?
 
 The advantage of OpenID Connect is the fact that it's standardized and widely adopted. This means that a library or tool designed to work with, e.g. Google accounts, can easily be adopted to work with e.g. Microsoft's Active Directory  or the Norwegian national ID provider ID-porten.
@@ -49,9 +48,11 @@ See the `IdPortenApiClient` client for an example.
 
 ## Deployment
 
-1. `mvn clean package azure-webapp:deploy`
-2. Go to [Azure app service cmd](https://javabin-openid-demo.scm.azurewebsites.net/DebugConsole) to check logs and update configuration file
-3. Go to [Azure Portal](https://portal.azure.com) to restart server
+1. `az login` (require [Azure CLI tools](https://docs.microsoft.com/en-us/cli/azure/?view=azure-cli-latest) to be installed)
+2. `mvn clean package azure-webapp:deploy -Dazure.appName=...`
+3. [`az webapp browse --resource-group identity-fun --name <appName>`](https://docs.microsoft.com/en-us/cli/azure/webapp?view=azure-cli-latest#az-webapp-browse) opens a web browser on the app
+4. Go to Azure app service cmd on `https://<appName>.scm.azurewebsites.net/DebugConsole` to check logs and update configuration file
+5. Go to [Azure Portal](https://portal.azure.com) to restart server (search for "identity-fun" to find your resource group)
 
 
 ## Revoking application consent

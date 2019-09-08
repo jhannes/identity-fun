@@ -15,8 +15,9 @@
         <azure.region>westeurope</azure.region>
         <azure.pricingTier>F1</azure.pricingTier>
         <azure.javaVersion>11</azure.javaVersion>
-        <azure.resourceGroup>jz-heroes</azure.resourceGroup>
-        <azure.appName>javabin-openid-demo</azure.appName>
+        <!-- configure identityFun.azure.appName in you settings.xml or on the command line with -Dazure.appName=<unique prefix to .azurewebsites.net> -->
+        <azure.appName>${identityFun.azure.appName}</azure.appName>
+        <azure.resourceGroup>identity-fun</azure.resourceGroup>
     </properties>
 
 
