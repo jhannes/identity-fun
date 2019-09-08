@@ -10,7 +10,7 @@ Open-ID Connect consists of three main technologies:
 
 To execute an Open ID Connect authorization code flow, the client, application and identity provider goes through the following steps (copy and paste the following into http://plantuml.com)
 
-```
+```puml
 actor endUser
 participant application
 participant IDP
@@ -84,7 +84,7 @@ We will explore the following Identity Providers:
 
 ### Prerequisites
 
-In order to follow this tutorial, you need a computer with a Bash shell and cUrl. On Windows, you can use Windows Subsystem for Linux (WSL), Git bash or Cygwin. If you don't want to install cUrl, you can use Httpie or Postman
+In order to follow this tutorial, you need a computer with a Bash shell and cUrl. On Windows, you can use Windows Subsystem for Linux (WSL), Git bash or Cygwin. If you don't want to install cUrl, you can use Httpie, Postman, IntelliJ HTTP Scratch files or VS Code REST Client.
 
 
 ### Google
@@ -102,7 +102,7 @@ In order to follow this tutorial, you need a computer with a Bash shell and cUrl
    * `export CLIENT_ID=<value from Google API Console>`
    * `echo "https://accounts.google.com/o/oauth2/v2/auth?scope=profile+email+openid&response_type=code&redirect_uri=$REDIRECT_URI&client_id=$CLIENT_ID"`
    * Open the resulting URL in a browser
-7. *Don't panick*: Complete the login sequence in the browser. You will be redirected to https://my.example.com _which is an invalid web site_. That's fine!
+7. *Don't panic*: Complete the login sequence in the browser. You will be redirected to https://my.example.com _which is an invalid web site_. That's fine!
 8. Copy the `code` query parameter from your browser. You need to do execute an HTTP POST request to Google, for example using cUrl:
    * `export REDIRECT_URI=https://my.example.com/oauth2callback` # Or your own value
    * `export CLIENT_ID=<value from Google API Console>`
@@ -137,7 +137,7 @@ To understand where the URLs and scopes come from, you can see the [Discovery do
    * 48099902453
    * 48106400663
    * 48126800293
-4. *Don't panick*: Complete the login sequence in the browser. You will be redirected to `http://localhost:8080` _where you probably will get a 404 or other error_. That's fine!
+4. *Don't panic*: Complete the login sequence in the browser. You will be redirected to `http://localhost:8080` _where you probably will get a 404 or other error_. That's fine!
 5. Copy the `code` query parameter from your browser. You need to do execute an HTTP POST request to Difi, for example using cUrl:
    * `export REDIRECT_URI=http://localhost:8080/idporten/oauth2callback` # Or your own value
    * `export CLIENT_ID=<value from Difi>`
@@ -174,7 +174,7 @@ If you have an account in any Active Directory, you can create your own free Act
    * `export SCOPE=openid+profile+email`
 5. Generate an authorization URL and paste into your web browser (find under Overview > Endpoints):
    * `echo "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?scope=$SCOPE&response_type=code&redirect_uri=$REDIRECT_URI&client_id=$CLIENT_ID"`
-6. Authorize with *any organization you have access to*. You can authorize with your work account, your account at your client site or any organization that uses Active Directory. Since the organization has no relationship with your personal Active Directory, the user will be prompted for consent before Active Directory gives their information to your app. **Don't panick when the browser redirects you to your currently inactive redirect_uri**
+6. Authorize with *any organization you have access to*. You can authorize with your work account, your account at your client site or any organization that uses Active Directory. Since the organization has no relationship with your personal Active Directory, the user will be prompted for consent before Active Directory gives their information to your app. **Don't panic when the browser redirects you to your currently inactive redirect_uri**
 7. Copy the `code` from the resulting URL (example)
    * `export CODE=<value from browser query parameter>`
 8. Request the authorization token:
@@ -205,7 +205,7 @@ If you have an account in any Active Directory, you can create your own free Act
    * `export TOKEN_ENDPOINT=https://login.microsoftonline.com/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/oauth2/v2.0/token` # Find under Overview > Endpoints)
 6. Generate an authorization URL and paste into your web browser:
    * `echo "$AUTHORIZATION_ENDPOINT?scope=$SCOPE&response_type=code&redirect_uri=$REDIRECT_URI&client_id=$CLIENT_ID"`
-7. Authorize a user that is a member of your Active Directory. This can be a full user of the Active Directory or it can be a guest user that you have invited from another organization. Since their organization has no relationship with your personal Active Directory, a guest user will be prompted for consent before Active Directory gives their information to your app. **Don't panick when the browser redirects you to your currently inactive redirect_uri**
+7. Authorize a user that is a member of your Active Directory. This can be a full user of the Active Directory or it can be a guest user that you have invited from another organization. Since their organization has no relationship with your personal Active Directory, a guest user will be prompted for consent before Active Directory gives their information to your app. **Don't panic when the browser redirects you to your currently inactive redirect_uri**
 8. Copy the `code` from the resulting URL (example)
    * `export CODE=<value from browser query parameter>`
 9. Request the authorization token:
@@ -220,7 +220,7 @@ Notice that the `tid` (tenant ID) and `iss` (issuer) claims in the ID token cont
 
 Only guest users that you have explicitly invited to your Active Directory will be able to authenticate with your apps.
 
-You can [configure the app in you Active Directory](https://portal.azure.com/#blade/Microsoft_AAD_IAM/StartboardApplicationsMenuBlade/AllApps/menuId/) only allow specific users or users in specific groups to access the app. Select your app and under Properties, select "User Assignement Required". (You need Active Directory Premium to enable Group assignment)
+You can [configure the app in you Active Directory](https://portal.azure.com/#blade/Microsoft_AAD_IAM/StartboardApplicationsMenuBlade/AllApps/menuId/) only allow specific users or users in specific groups to access the app. Select your app and under Properties, select "User Assignment Required". (You need Active Directory Premium to enable Group assignment)
 
 
 Here is an example JWT:
@@ -249,7 +249,7 @@ This guide assumes you are member of a Slack community already, but you don't ne
    * `export TOKEN_ENDPOINT=https://slack.com/api/oauth.access`
 4. Generate an authorization URL and paste into your web browser:
    * `echo "$AUTHORIZATION_ENDPOINT?scope=$SCOPE&response_type=code&redirect_uri=$REDIRECT_URI&client_id=$CLIENT_ID"`
-5. Authorize with a user that is a member of your Slack community and consent to the app getting your details. **Don't panick when the browser redirects you to your currently inactive redirect_uri**
+5. Authorize with a user that is a member of your Slack community and consent to the app getting your details. **Don't panic when the browser redirects you to your currently inactive redirect_uri**
 6. Copy the `code` from the resulting URL (example)
    * `export CODE=<value from browser query parameter>`
 7. Request the authorization token:
@@ -276,7 +276,7 @@ This guide assumes you are member of a Slack community already, but you don't ne
    * `export SCOPE=openid+profile+email`
 3. Generate an authorization URL and paste into your web browser:
    * `echo "$AUTHORIZATION_ENDPOINT?scope=$SCOPE&response_type=code&redirect_uri=$REDIRECT_URI&client_id=$CLIENT_ID"`
-4. Authorize with the ID provider. **Don't panick when the browser redirects you to your currently inactive redirect_uri**
+4. Authorize with the ID provider. **Don't panic when the browser redirects you to your currently inactive redirect_uri**
 5. Copy the `code` from the resulting URL (example)
    * `export CODE=<value from browser query parameter>`
 6. Request the authorization token:
@@ -291,7 +291,7 @@ Alternatively, if you have set up your client as a PUBLIC client (one that canno
 
 1. Generate an authorization URL and paste into your web browser:
    * `echo "$AUTHORIZATION_ENDPOINT?redirect_uri=$REDIRECT_URI&client_id=$CLIENT_ID&scope=$SCOPE&nonce=$RANDOM&response_type=id_token&response_mode=fragment"`
-2. Authorize with the ID provider. **Don't panick when the browser redirects you to your currently inactive redirect_uri**
+2. Authorize with the ID provider. **Don't panic when the browser redirects you to your currently inactive redirect_uri**
 3. Copy the `id_token` from the resulting URL fragment (example)
    * `export ID_TOKEN=<value from browser id_token fragment>`
 7. Examine the token response:

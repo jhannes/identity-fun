@@ -7,13 +7,14 @@
     <style>
         #sessions {
             display: flex;
-            flex-direction: rows;
+            flex-wrap: wrap;
         }
         #sessions div {
             flex: 1;
             padding: 1em;
             margin: .5em;
             border: 1px solid gray;
+            display: inline-block;
         }
 
     </style>
@@ -28,9 +29,13 @@
 
     <ul>
         <li><a href="/id/google/authenticate">Login with Google</a></li>
-        <li><a href="/id/microsoft/authenticate">Login with Microsoft</a></li>
-        <li><a href="/id/microsoft/authenticate?domain_hint=hakkebakkeskogen.onmicrosoft.com">Login with Microsoft (Hakkebakkeskogen)</a></li>
-        <li><a href="/id/microsoft/authenticate?domain_hint=soprasteria.com">Login with Microsoft (Sopra Steria)</a></li>
+        <li>
+            <a href="/id/azure/authenticate">Login with Microsoft</a>
+            <ul>
+                <li><a href="/id/azure/authenticate?domain_hint=hakkebakkeskogen.onmicrosoft.com">Request org Hakkebakkeskogen</a></li>
+                <li><a href="/id/azure/authenticate?domain_hint=soprasteria.com">Request org Sopra Steria</a></li>
+            </ul>
+        </li>
         <li><a href="/id/slack/authenticate">Login with Slack</a></li>
         <li><a href="/id/idporten/authenticate">Login with ID-porten</a></li>
         <li><a href="/id/mssingle/authenticate">Login with Microsoft (Single-Tenant)</a></li>
@@ -46,12 +51,20 @@ function displayUser(user) {
     const sessionsElement = document.getElementById("sessions");
 
     for (const session of user.idProviderSessions) {
-        const username = session.userinfo.upn || session.userinfo.email || session.userinfo.pid;
+        const username = session.userinfo.upn || session.userinfo.email || session.userinfo.pid || session.userinfo.name;
+        const picture = session.userinfo.picture || session.userinfo.image_72 || session.userinfo.image;
+        console.log({picture});
 
         const sessionElement = document.createElement("div");
 
+        if (picture) {
+            const pictureElement = document.createElement("p");
+            pictureElement.innerHTML = "<img src='" + picture + "' width='72px' />";
+            sessionElement.appendChild(pictureElement);
+        }
+
         const usernameElement = document.createElement("p");
-        usernameElement.innerHTML = username;
+        usernameElement.innerText = username;
         sessionElement.appendChild(usernameElement);
 
         if (session.refreshToken) {
@@ -70,6 +83,13 @@ function displayUser(user) {
             endSessionLink.innerHTML = "End session";
             endSessionElement.appendChild(endSessionLink);
             sessionElement.appendChild(endSessionElement);
+        }
+
+        if (session.accessToken) {
+            const copyAccessTokenElement = document.createElement("button");
+            copyAccessTokenElement.setAttribute("onclick", "navigator.clipboard.writeText('" + session.accessToken + "').then(console.log)");
+            copyAccessTokenElement.innerText = "Copy access token to clipboard";
+            sessionElement.appendChild(copyAccessTokenElement);
         }
 
         sessionsElement.appendChild(sessionElement);

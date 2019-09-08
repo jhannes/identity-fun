@@ -54,7 +54,6 @@ public class UserSession {
 
     public static class OpenIdConnectSession implements IdProviderSession {
         private String controlUrl;
-        private String issuer;
         private BearerToken accessToken;
         private JsonObject userinfo;
         private Optional<String> refreshToken;
@@ -62,10 +61,6 @@ public class UserSession {
 
         public void setControlUrl(String controlUrl) {
             this.controlUrl = controlUrl;
-        }
-
-        public void setIssuer(String issuer) {
-            this.issuer = issuer;
         }
 
         public void setAccessToken(BearerToken accessToken) {
@@ -93,7 +88,7 @@ public class UserSession {
 
         @Override
         public String getIssuer() {
-            return issuer;
+            return getIdToken().iss();
         }
 
         @Override

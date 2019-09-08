@@ -9,9 +9,14 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <azure.region>westeurope</azure.region>
+        <azure.pricingTier>F1</azure.pricingTier>
+        <azure.javaVersion>11</azure.javaVersion>
+        <azure.resourceGroup>jz-heroes</azure.resourceGroup>
+        <azure.appName>javabin-openid-demo</azure.appName>
     </properties>
 
 
@@ -19,12 +24,12 @@
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-webapp</artifactId>
-            <version>9.4.11.v20180605</version>
+            <version>9.4.20.v20190813</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.25</version>
+            <version>1.7.28</version>
         </dependency>
         <dependency>
             <groupId>org.logevents</groupId>
@@ -34,7 +39,7 @@
         <dependency>
             <groupId>org.jsonbuddy</groupId>
             <artifactId>jsonbuddy</artifactId>
-            <version>0.14.1</version>
+            <version>0.14.2</version>
         </dependency>
     </dependencies>
 
@@ -46,6 +51,8 @@
                 <version>3.8.1</version>
                 <configuration>
                     <release>11</release>
+                    <source>11</source>
+                    <target>11</target>
                 </configuration>
             </plugin>
             <plugin>
@@ -87,11 +94,11 @@
                 <artifactId>azure-webapp-maven-plugin</artifactId>
                 <version>1.7.0</version>
                 <configuration>
-                    <resourceGroup>jz-heroes</resourceGroup>
-                    <appName>javabin-openid-demo</appName>
-                    <region>westeurope</region>
-                    <pricingTier>F1 </pricingTier>
-                    <javaVersion>11</javaVersion>
+                    <resourceGroup>${azure.resourceGroup}</resourceGroup>
+                    <appName>${azure.appName}</appName>
+                    <region>${azure.region}</region>
+                    <pricingTier>${azure.pricingTier} </pricingTier>
+                    <javaVersion>${azure.javaVersion}</javaVersion>
                     <allowTelemetry>true</allowTelemetry>
                     <resources>
                         <resource>
@@ -118,4 +125,5 @@
             </plugin>
         </plugins>
     </build>
+
 </project>

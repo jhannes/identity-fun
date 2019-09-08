@@ -3,11 +3,14 @@ package com.johannesbrodwall.identity;
 public class Oauth2ClientConfiguration {
     private String clientId;
     private String clientSecret;
-    private String redirectUri;
     private String providerName;
+    private final Configuration configuration;
 
-    public Oauth2ClientConfiguration(String providerName) {
+    public Oauth2ClientConfiguration(String providerName, Configuration configuration) {
         this.providerName = providerName;
+        this.configuration = configuration;
+        setClientId(configuration.getRequiredProperty(providerName + ".client_id"));
+        setClientSecret(configuration.getRequiredProperty(providerName + ".client_secret"));
     }
 
     public void setClientId(String clientId) {
@@ -26,12 +29,8 @@ public class Oauth2ClientConfiguration {
         return clientSecret;
     }
 
-    public void setRedirectUri(String redirectUri) {
-        this.redirectUri = verifyNotNull("redirectUri", redirectUri);
-    }
-
-    public String getRedirectUri() {
-        return redirectUri;
+    public String getRedirectUri(String defaultValue) {
+        return configuration.getProperty(providerName + ".redirect_uri").orElse(defaultValue);
     }
 
     private String verifyNotNull(String propertyName, String value) {

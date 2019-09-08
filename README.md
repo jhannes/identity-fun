@@ -4,6 +4,20 @@ Training application to further understanding of OpenID Connect and Oauth2. Live
 
 ## Setup
 
+Identity-fun reads configuration of identity providers from `oauth2-providers.properties`. To make the server work, you have to create this file. You can use the provided `oauth2-providers.properties.template` as a starting point.
+
+The configuration is read anew for each request, so you can update it without restart.
+
+1. Run the main class `com.johannesbrodwall.identity.IdentityServer`
+2. Go to http://localhost:8080
+3. Click the link to the login provider of your choice
+4. You will receive a page with a link to the relevant identity provider control panel
+5. Use the identity provider to create a `client_id` and `client_secret` to put in `oauth2-providers.properties`
+6. When you refresh the Identity-fun page, you will be allowed to log in with the provider
+
+
+### Identity provider details
+
 1. Create Google credentials at [Google Developer Console](https://console.developers.google.com/apis/credentials) and put `google.client_id`, `google.client_secret` and `google.redirect_uri` into `oauth2-providers.properties`
 2. Create Active Directory crentials in [Azure Portal](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal) - [App Registration Blade](https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade) and put `azure.client_id`, `azure.client_secret` and `azure.redirect_uri` into `oauth2-providers.properties`.
 3. [Request credentials](https://difi.github.io/idporten-oidc-dokumentasjon/) for ID-porten and put `idporten.client_id`, `idporten.client_secret` and `idporten.redirect_id` in `oauth2-providers.properties`.

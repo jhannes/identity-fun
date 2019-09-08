@@ -11,36 +11,31 @@ import org.slf4j.MDC;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.UUID;
 
 public abstract class Oauth2Servlet extends HttpServlet {
 
     private static Logger logger = LoggerFactory.getLogger(Oauth2Servlet.class);
 
-    private final String clientId;
-    private final String clientSecret;
-    private final String redirectUri;
-
-    private final String authorizationEndpoint;
-    private final String tokenEndpoint;
     private String grantType = "authorization_code";
     private String responseType = "code";
-    private String scope;
 
-    public Oauth2Servlet(String authorizationEndpoint, String tokenEndpoint, String scope, Oauth2ClientConfiguration configuration) {
-        this.authorizationEndpoint = authorizationEndpoint;
-        this.tokenEndpoint = tokenEndpoint;
-        this.scope = scope;
-        this.clientId = configuration.getClientId();
-        this.clientSecret = configuration.getClientSecret();
-        this.redirectUri = configuration.getRedirectUri();
-    }
+    protected abstract Optional<String> getConsoleUrl();
+
+    protected abstract Oauth2Configuration getOauth2Configuration() throws IOException;
+
+    protected abstract JsonObject fetchUserProfile(BearerToken accessToken) throws IOException;
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -53,22 +48,65 @@ public abstract class Oauth2Servlet extends HttpServlet {
 
         try (MDC.MDCCloseable ignored = MDC.putCloseable("provider", req.getServletPath())) {
             String action = pathParts[1];
+            Oauth2Configuration oauth2Configuration = getOauth2Configuration();
             if (action.equals("authenticate")) {
-                authenticate(req, resp);
+                authenticate(req, resp, oauth2Configuration);
             } else if (action.equals("oauth2callback")) {
-                oauth2callback(req, resp);
+                oauth2callback(req, resp, oauth2Configuration);
             } else if (action.equals("token")) {
-                getToken(req, resp);
+                getToken(req, resp, oauth2Configuration);
             } else if (action.equals("session")) {
-                setupSession(req, resp);
+                setupSession(req, resp, oauth2Configuration);
             } else {
                 logger.warn("Unknown request {}", req.getServletPath() + req.getPathInfo() + "?" + req.getQueryString());
                 resp.sendError(404);
             }
+        } catch (Oauth2ConfigurationException e) {
+            logger.warn("Configuration problem", e);
+            resp.getWriter().write("<!DOCTYPE html>\n"
+                    + "<html>"
+                    + "<head>"
+                    + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+                    + "</head>"
+                    + "<body>"
+                    + "<h2>Setup error with provider <code>" + getClass().getSimpleName() + "</code></h2>"
+                    + "<div><code>" + e.getMessage() + "</code></div>"
+                    +  getConsoleUrl()
+                        .map(url ->
+                                "<h2><a target='_blank' href='"  + url + "'>Setup " + getClass().getSimpleName() + "</a></h2>"
+                                        + "<div>Use " +
+                                        "<code>" + getRedirectUri(req) + "</code>" +
+                                        " as redirect_uri " +
+                                        "<button onclick='navigator.clipboard.writeText(\"" + getRedirectUri(req) + "\")'>clipboard</button>" +
+                                        "</div>"
+                        )
+                        .orElse("")
+                    + "<div><a href='/'>Front page</a></div>"
+                    + "</body>"
+                    + "</html>");
         }
     }
 
-    private void authenticate(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    private String getRedirectUri(HttpServletRequest req) {
+        try {
+            return getOauth2Configuration().getRedirectUri(getDefaultRedirectUri(req));
+        } catch (IOException|Oauth2ConfigurationException e) {
+            return getDefaultRedirectUri(req);
+        }
+    }
+
+    private String getDefaultRedirectUri(HttpServletRequest req) {
+        String scheme = Optional.ofNullable(req.getHeader("X-Forwarded-Proto")).orElse(req.getScheme());
+        String host = Optional.ofNullable(req.getHeader("X-Forwarded-Host")).orElse(req.getHeader("Host"));
+        return scheme + "://" + host + req.getContextPath() + req.getServletPath() + "/oauth2callback";
+    }
+
+    private void authenticate(HttpServletRequest req, HttpServletResponse resp, Oauth2Configuration oauth2Configuration) throws IOException {
+        URL authorizationEndpoint = oauth2Configuration.getAuthorizationEndpoint();
+        String clientId = oauth2Configuration.getClientId();
+        String redirectUri = getRedirectUri(req);
+        String scope = oauth2Configuration.getScopesString();
+
         String loginState = UUID.randomUUID().toString();
         req.getSession().setAttribute("loginState", loginState);
 
@@ -93,7 +131,11 @@ public abstract class Oauth2Servlet extends HttpServlet {
                 "</div></html>");
     }
 
-    private void oauth2callback(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    private void oauth2callback(HttpServletRequest req, HttpServletResponse resp, Oauth2Configuration configuration) throws IOException {
+        String clientId = configuration.getClientId();
+        String redirectUri = getRedirectUri(req);
+        URL tokenEndpoint = configuration.getTokenEndpoint();
+
         String code = req.getParameter("code");
         String state = req.getParameter("state");
 
@@ -128,12 +170,14 @@ public abstract class Oauth2Servlet extends HttpServlet {
                 "</div></html>");
     }
 
-    private void getToken(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    private void getToken(HttpServletRequest req, HttpServletResponse resp, Oauth2Configuration configuration) throws IOException {
+        String clientSecret = configuration.getClientSecret();
+        URL tokenEndpoint = configuration.getTokenEndpoint();
         String payload = req.getQueryString();
         payload = payload.replace("xxxxxxx", URLEncoder.encode(clientSecret, StandardCharsets.UTF_8.toString()));
 
         logger.debug("Fetching token from POST {} with payload: {}", tokenEndpoint, payload);
-        HttpURLConnection connection = (HttpURLConnection) new URL(tokenEndpoint).openConnection();
+        HttpURLConnection connection = (HttpURLConnection) tokenEndpoint.openConnection();
         connection.setDoOutput(true);
         connection.setDoInput(true);
         try (OutputStream outputStream = connection.getOutputStream()) {
@@ -162,7 +206,8 @@ public abstract class Oauth2Servlet extends HttpServlet {
                 + "</html>");
     }
 
-    private void setupSession(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    private void setupSession(HttpServletRequest req, HttpServletResponse resp, Oauth2Configuration configuration) throws IOException {
+        URL authorizationEndpoint = configuration.getAuthorizationEndpoint();
         JsonObject tokenResponse = JsonParser.parseToObject((String) req.getSession().getAttribute("token_response"));
 
         BearerToken accessToken = new BearerToken(tokenResponse.requiredString("access_token"));
@@ -170,7 +215,7 @@ public abstract class Oauth2Servlet extends HttpServlet {
 
         UserSession.Oauth2ProviderSession idpSession = new UserSession.Oauth2ProviderSession();
         idpSession.setControlUrl(req.getServletPath());
-        idpSession.setIssuer(new URL(authorizationEndpoint).getAuthority());
+        idpSession.setIssuer(authorizationEndpoint.getAuthority());
         idpSession.setAccessToken(accessToken.toString());
         idpSession.setUserinfo(profile);
 
@@ -178,8 +223,6 @@ public abstract class Oauth2Servlet extends HttpServlet {
 
         resp.sendRedirect("/");
     }
-
-    protected abstract JsonObject fetchUserProfile(BearerToken accessToken) throws IOException;
 
     JsonObject jsonParserParseToObject(URL endpoint, HttpAuthorization authorization) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) endpoint.openConnection();
