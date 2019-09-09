@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.Properties;
 
-class Configuration {
+public class Configuration {
     private final Properties properties;
     private File file;
 

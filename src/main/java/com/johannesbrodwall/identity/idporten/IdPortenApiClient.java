@@ -1,5 +1,6 @@
 package com.johannesbrodwall.identity.idporten;
 
+import com.johannesbrodwall.identity.Configuration;
 import com.johannesbrodwall.identity.util.BearerToken;
 import org.jsonbuddy.JsonArray;
 import org.jsonbuddy.JsonNode;
@@ -9,10 +10,12 @@ import org.jsonbuddy.parse.JsonParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -23,16 +26,14 @@ import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.cert.X509Certificate;
 import java.time.ZonedDateTime;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
-import java.util.Properties;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
+ * Client for use of the <a href="https://integrasjon-ver2.difi.no/swagger-ui.html">Self-service API</a> for ID-porten.
  * Demonstrates the use of a certificate to generate a client-generated JWT, exchanging it
  * for an API JTW and using this JWT as a bearer token to make API calls. Will try to ensure
  * that exactly one client exists with the client_name "javabin_openid_demo"
@@ -52,56 +53,185 @@ public class IdPortenApiClient {
     private static final Logger logger = LoggerFactory.getLogger(IdPortenApiClient.class);
 
     private final BearerToken accessToken;
+    private URL apiEndpoint;
 
-    public IdPortenApiClient(URL oidcEndpoint, String issuer, X509Certificate certificate, PrivateKey privateKey) throws GeneralSecurityException, IOException {
-        this.accessToken = requestAccessToken(oidcEndpoint, issuer, certificate, privateKey);
+    public IdPortenApiClient(URL apiEndpoint, BearerToken accessToken) {
+        this.apiEndpoint = apiEndpoint;
+        this.accessToken = accessToken;
     }
 
     public static void main(String[] args) throws Exception {
-        Properties properties = new Properties();
-        properties.load(new FileReader("idporten.properties"));
+        Configuration idPortenConfig = new Configuration(new File("idporten.properties"));
+        Configuration oauth2Config = new Configuration(new File("oauth2-providers.properties"));
 
-        KeyStore keyStore = KeyStore.getInstance("pkcs12");
-        keyStore.load(new FileInputStream(properties.getProperty("keystore.file")), properties.getProperty("keystore.password").toCharArray());
-        String alias = Collections.list(keyStore.aliases()).get(0);
-        X509Certificate certificate = (X509Certificate) keyStore.getCertificate(alias);
-        PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, properties.getProperty("keystore.password").toCharArray());
+        URL apiEndpoint = new URL(idPortenConfig.getRequiredProperty("idporten.integrasjon_endpoint"));
 
-        String issuer = properties.getProperty("issuer");
+        URL oidcEndpoint = new URL(oauth2Config.getProperty("id_porten.issuer_uri").orElse("https://oidc-ver2.difi.no/idporten-oidc-provider") + "/");
+        BearerToken accessToken = requestAccessToken(idPortenConfig, oidcEndpoint);
 
-        URL oidcEndpoint = new URL(properties.getProperty("idporten.oidc_endpoint"));
+        IdPortenApiClient idPortenApiClient = new IdPortenApiClient(apiEndpoint, accessToken);
 
-        IdPortenApiClient idPortenApiClient = new IdPortenApiClient(oidcEndpoint, issuer, certificate, privateKey);
+        String clientName = System.getProperty("idporten.client_name");
+        if (clientName == null) {
+            System.err.println("Please run with -Didporten.client_name=<client_name>");
+            System.exit(1);
+        }
 
-        URL apiEndpoint = new URL(properties.getProperty("idporten.integrasjon_endpoint"));
+        System.out.println("Please enter command: [list [<client_name>]|create|findClient|show|update|deleteDuplicates|help]");
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        String input = reader.readLine().trim();
 
-        String clientName = "javabin_public_openid_demo";
-        List<JsonObject> clients = idPortenApiClient.parseToJsonArray(new URL(apiEndpoint, "/clients"))
+        String[] parts = input.split(" ");
+        String command = parts[0];
+        if (command.equalsIgnoreCase("list")) {
+            JsonArray clients = idPortenApiClient.listClients(parts.length > 1 ? Optional.of(parts[1]) : Optional.empty());
+            logger.info("Clients: {}", clients.toIndentedJson("  "));
+        } else if (command.equals("show")) {
+            String clientId = oauth2Config.getRequiredProperty("idporten.client_id");
+            JsonObject clientObject = idPortenApiClient.getClient(clientId);
+            logger.info("show client {} Response: {}", clientId, clientObject.toIndentedJson("  "));
+        } else if (command.equals("deleteDuplicates")) {
+            idPortenApiClient.deleteDuplicates(clientName);
+        } else if (command.equals("update")) {
+            String clientId = oauth2Config.getRequiredProperty("idporten.client_id");
+            String redirectUri = oauth2Config.getRequiredProperty("idporten.redirect_uri");
+            String postLogoutUri = redirectUri.replace("/oauth2callback", "/logout");
+            idPortenApiClient.updateClientUris(clientId, redirectUri, postLogoutUri);
+        } else if (command.equals("DELETE")) {
+            String clientId = oauth2Config.getRequiredProperty("idporten.client_id");
+            idPortenApiClient.deleteClient(clientId);
+        } else if (command.equals("findClient")) {
+            JsonArray clients = idPortenApiClient.listClients(Optional.of(clientName));
+            if (clients.size() != 1) {
+                throw new RuntimeException("Could not determine client_id for client_name=" + clientName + ": " + clients);
+            }
+            JsonObject client = clients.requiredObject(0);
+            String clientId = client.requiredString("client_id");
+            System.out.println("idporten.client_id=" + clientId);
+            if (oauth2Config.getProperty("idporten.client_secret").isEmpty()) {
+                idPortenApiClient.createSecret(clientId);
+            }
+        } else if (command.equals("create")) {
+            JsonArray clients = idPortenApiClient.listClients(Optional.of(clientName));
+            if (!clients.isEmpty()) {
+                throw new RuntimeException("Client already exists for client_name=" + clientName + ": " + clients);
+            }
+            String redirectUri = oauth2Config.getRequiredProperty("idporten.redirect_uri");
+            String postLogoutUri = redirectUri.replace("/oauth2callback", "/logout");
+
+            JsonObject clientObject = newClient(clientName, redirectUri, postLogoutUri);
+            JsonObject client = idPortenApiClient.createClient(clientObject);
+            logger.info("Clients: {}", idPortenApiClient.listClients(Optional.of(clientName)).toIndentedJson("  "));
+            System.out.println("idporten.client_id=" + client.requiredString("client_id"));
+        } else {
+            System.err.println("Illegal command [" + input + "]");
+        }
+    }
+
+    private static JsonObject newClient(String clientName, String redirectUri, String postLogoutUri) {
+        return new JsonObject()
+                        .put("client_name", clientName)
+                        .put("description", clientName)
+                        .put("scopes", new JsonArray().add("openid").add("profile"))
+                        .put("redirect_uris", new JsonArray().add(redirectUri))
+                        .put("post_logout_uris", new JsonArray().add(postLogoutUri))
+                        .put("client_type", "PUBLIC")
+                        .put("token_reference", "OPAQUE")
+                        .put("refresh_token_usage", "ONETIME")
+                        .put("frontchannel_logout_session_required", false)
+                        .put("force_pkce", false)
+                        .put("grant_types", new JsonArray().add("authorization_code"))
+                        .put("client_uri", "");
+    }
+
+    private void createSecret(String clientId) throws IOException {
+        URL url = new URL(apiEndpoint, "clients/" + clientId + "/secret");
+        try {
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            accessToken.authorize(conn);
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            JsonObject secret = JsonParser.parseToObject(conn);
+            logger.info("POST {} Response: {}", url, secret.toIndentedJson("  "));
+            System.out.println("idporten.client_secret=" + secret.requiredString("client_secret"));
+        } catch (JsonHttpException e) {
+            logger.error("POST {} Error: {}{}", url, e.getErrorContent(), e.getJsonError(), e);
+            throw e;
+        }
+
+    }
+
+    private JsonObject createClient(JsonObject clientObject) throws IOException {
+        URL url = new URL(apiEndpoint, "clients/");
+        try {
+            JsonNode result = postJson(clientObject, url, "POST");
+            logger.info("POST {} Response: {}", url, result);
+            return (JsonObject)result;
+        } catch (JsonHttpException e) {
+            logger.error("PUT {} Error: {}{}", url, e.getErrorContent(), e.getJsonError(), e);
+            throw e;
+        }
+    }
+
+    private void deleteDuplicates(String clientName) throws IOException {
+        parseToJsonArray(new URL(apiEndpoint, "/clients"))
                 .objectStream()
                 .filter(o -> o.requiredString("client_name").equals(clientName))
                 .sorted(Comparator.comparing((JsonObject o) -> ZonedDateTime.parse(o.requiredString("created"))).reversed())
-                .collect(Collectors.toList());
-        logger.info("First client {}", clients.stream().map(o -> o.toIndentedJson( "  ")).findFirst());
-        logger.info("Client_ids {}", clients.stream().skip(1).map(o -> o.requiredString("client_id")).collect(Collectors.toList()));
-
-        clients.stream().findFirst().ifPresentOrElse(
-                client -> idPortenApiClient.updateClient(apiEndpoint, client.requiredString("client_id"), Arrays.asList(
-                        "http://localhost:8080/fragments/oauth2callback.html",
-                        "https://javabin-openid-demo.azurewebsites.net/fragments/oauth2callback.html",
-                        "http://localhost:8080/id/idporten/oauth2callback",
-                        "https://javabin-openid-demo.azurewebsites.net/id/idporten/oauth2callback"), "PUBLIC"),
-                () -> idPortenApiClient.createClient(apiEndpoint, clientName, Arrays.asList(
-                        "http://localhost:8080/fragments/oauth2callback.html",
-                        "https://javabin-openid-demo.azurewebsites.net/fragments/oauth2callback.html",
-                        "http://localhost:8080/id/idporten/oauth2callback",
-                        "https://javabin-openid-demo.azurewebsites.net/fragments/idporten-oauth2callback.html"), "PUBLIC"));
-
-        clients.stream().skip(1)
-                .forEach(client -> idPortenApiClient.deleteClient(apiEndpoint, client.requiredString("client_id")));
-        idPortenApiClient.listClients(apiEndpoint);
+                .skip(1)
+                .forEach(client -> deleteClient(client.requiredString("client_id")));
     }
 
-    private void deleteClient(URL apiEndpoint, String clientId) {
+    private void updateClientUris(String clientId, String redirectUri, String postLogoutUri) throws IOException {
+        JsonObject clientObject = getClient(clientId);
+        boolean updateRequired = false;
+        JsonArray redirectUris = clientObject.requiredArray("redirect_uris");
+        if (!redirectUris.strings().contains(redirectUri)) {
+            redirectUris.add(redirectUri);
+            clientObject.put("redirect_uris", redirectUris);
+            updateRequired = true;
+        }
+
+        JsonArray postLogoutUris = clientObject.arrayValue("post_logout_redirect_uris").orElse(new JsonArray());
+        System.out.println(postLogoutUris);
+        if (!postLogoutUris.strings().contains(postLogoutUri)) {
+            clientObject.put("post_logout_redirect_uris", postLogoutUris);
+            updateRequired = true;
+        }
+
+        if (updateRequired) {
+            clientObject.remove("client_orgno");
+            URL url = new URL(apiEndpoint, "clients/" + clientId);
+            try {
+                JsonNode result = postJson(clientObject, url, "PUT");
+                logger.info("PUT {} Response: {}", url, result.toIndentedJson("  "));
+            } catch (JsonHttpException e) {
+                logger.error("PUT {} Error: {}{}", url, e.getErrorContent(), e.getJsonError(), e);
+            }
+        } else {
+            logger.info("No update needed: {}", clientObject.toIndentedJson("  "));
+        }
+    }
+
+    private static BearerToken requestAccessToken(Configuration idPortenConfig, URL oidcEndpoint) throws IOException, GeneralSecurityException {
+        KeyStore keyStore = KeyStore.getInstance("pkcs12");
+        keyStore.load(new FileInputStream(idPortenConfig.getRequiredProperty("keystore.file")), idPortenConfig.getRequiredProperty("keystore.password").toCharArray());
+        String alias = Collections.list(keyStore.aliases()).get(0);
+        X509Certificate certificate = (X509Certificate) keyStore.getCertificate(alias);
+        PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, idPortenConfig.getRequiredProperty("keystore.password").toCharArray());
+        return requestAccessToken(oidcEndpoint, idPortenConfig.getRequiredProperty("issuer"), certificate, privateKey);
+    }
+
+    private JsonObject getClient(String clientId) throws IOException {
+        URL url = new URL(apiEndpoint, "/clients/");
+        return parseToJsonArray(url).objectStream()
+                .filter(o -> o.requiredString("client_id").equals(clientId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Could not find client " + clientId));
+    }
+
+    private void deleteClient(String clientId) {
+        logger.info("Deleting " + clientId);
         try {
             HttpURLConnection conn = (HttpURLConnection) new URL(apiEndpoint, "clients/" + clientId).openConnection();
             conn.setRequestMethod("DELETE");
@@ -113,62 +243,15 @@ public class IdPortenApiClient {
         }
     }
 
-    private void createClient(URL apiEndpoint, String clientName, List<String> redirectUris, String clientType) {
-        JsonObject clientObject = new JsonObject()
-                .put("client_name", clientName)
-                .put("client_id", clientName)
-                .put("description", clientName)
-                .put("scopes", new JsonArray().add("openid").add("profile"))
-                .put("redirect_uris", redirectUris)
-                .put("post_logout_uris", Arrays.asList(
-                        "https://javabin-openid-demo.azurewebsites.net/id/idporten/logout"))
-                .put("client_type", clientType)
-                .put("token_reference", "OPAQUE")
-                .put("refresh_token_usage", "ONETIME")
-                .put("frontchannel_logout_session_required", false)
-                .put("force_pkce", false)
-                .put("client_uri", "")
-                ;
-        try {
-            URL url = new URL(apiEndpoint, "clients/");
-            JsonNode result = postJson(clientObject, url, "POST");
-            logger.info("POST {} Response: {}", url, result);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void updateClient(URL apiEndpoint, String clientId, List<String> redirectUris, String clientType) {
-        JsonObject clientObject = new JsonObject()
-                .put("client_name", "javabin_openid_demo")
-                .put("client_id", "javabin_openid_demo")
-                .put("description", "javabin_openid_demo")
-                .put("scopes", new JsonArray().add("openid").add("profile"))
-                .put("redirect_uris", redirectUris)
-                .put("post_logout_uris", Arrays.asList(
-                        "https://javabin-openid-demo.azurewebsites.net/id/idporten/logout"))
-                .put("client_type", clientType)
-                .put("token_reference", "OPAQUE")
-                .put("refresh_token_usage", "ONETIME")
-                .put("frontchannel_logout_session_required", false)
-                .put("force_pkce", false)
-                .put("client_uri", "")
-                ;
-        try {
-            URL url = new URL(apiEndpoint, "clients/" + clientId);
-            JsonNode result = postJson(clientObject, url, "PUT");
-            logger.info("PUT {} Response: {}", url, result);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void listClients(URL apiEndpoint) throws IOException {
+    private JsonArray listClients(Optional<String> clientNameFilter) throws IOException {
         URL url = new URL(apiEndpoint, "/clients");
-        JsonArray response = parseToJsonArray(url);
-        logger.info("GET {} Response: {}", url, response.toIndentedJson("  "));
+        JsonArray clients = new JsonArray();
+        parseToJsonArray(url)
+                .objectStream()
+                .filter(o -> clientNameFilter.map(n -> o.requiredString("client_name").equals(n)).orElse(true))
+                .forEach(clients::add);
+        return clients;
     }
-
 
     private static BearerToken requestAccessToken(URL oidcEndpoint, String issuer, X509Certificate certificate, PrivateKey privateKey) throws GeneralSecurityException, IOException {
         JsonObject jwtHeader = new JsonObject()
@@ -195,6 +278,7 @@ public class IdPortenApiClient {
         }
         JsonObject response = JsonParser.parseToObject(conn);
         logger.debug("POST {} response {}", tokenEndpoint, response);
+        logger.debug("access_token={}", response.requiredString("access_token"));
 
         return new BearerToken(response.requiredString("access_token"));
     }
