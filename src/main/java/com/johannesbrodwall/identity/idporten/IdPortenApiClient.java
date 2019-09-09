@@ -20,6 +20,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.PrivateKey;
@@ -141,6 +142,7 @@ public class IdPortenApiClient {
                         .put("frontchannel_logout_session_required", false)
                         .put("force_pkce", false)
                         .put("grant_types", new JsonArray().add("authorization_code"))
+                        .put("token_endpoint_auth_method", "client_secret_post")
                         .put("client_uri", "");
     }
 
@@ -268,7 +270,7 @@ public class IdPortenApiClient {
 
         URL tokenEndpoint = new URL(oidcEndpoint, "token");
         String payload =
-                "grant_type=" + URLEncoder.encode("urn:ietf:params:oauth:grant-type:jwt-bearer", "utf8")
+                "grant_type=" + URLEncoder.encode("urn:ietf:params:oauth:grant-type:jwt-bearer", StandardCharsets.UTF_8)
                 + "&assertion=" + organizationJwt;
         HttpURLConnection conn = (HttpURLConnection) tokenEndpoint.openConnection();
         conn.setRequestMethod("POST");
