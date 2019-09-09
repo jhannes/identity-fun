@@ -6,32 +6,19 @@ import org.jsonbuddy.JsonArray;
 import org.jsonbuddy.JsonNode;
 import org.jsonbuddy.JsonObject;
 import org.jsonbuddy.parse.JsonHttpException;
-import org.jsonbuddy.parse.JsonParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
-import java.security.KeyStore;
-import java.security.PrivateKey;
-import java.security.Signature;
-import java.security.cert.X509Certificate;
 import java.time.ZonedDateTime;
-import java.util.Base64;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Client for use of the <a href="https://integrasjon-ver2.difi.no/swagger-ui.html">Self-service API</a> for ID-porten.
@@ -68,7 +55,7 @@ public class IdPortenApiClient {
         URL apiEndpoint = new URL(idPortenConfig.getRequiredProperty("idporten.integrasjon_endpoint"));
 
         URL oidcEndpoint = new URL(oauth2Config.getProperty("id_porten.issuer_uri").orElse("https://oidc-ver2.difi.no/idporten-oidc-provider") + "/");
-        BearerToken accessToken = requestAccessToken(idPortenConfig, oidcEndpoint);
+        BearerToken accessToken = new IdPortenAccessTokenFactory(idPortenConfig, oidcEndpoint).requestAccessToken();
 
         IdPortenApiClient idPortenApiClient = new IdPortenApiClient(apiEndpoint, accessToken);
 
@@ -108,9 +95,12 @@ public class IdPortenApiClient {
             }
             JsonObject client = clients.requiredObject(0);
             String clientId = client.requiredString("client_id");
-            System.out.println("idporten.client_id=" + clientId);
             if (oauth2Config.getProperty("idporten.client_secret").isEmpty()) {
-                idPortenApiClient.createSecret(clientId);
+                JsonObject secret = idPortenApiClient.createSecret(clientId);
+                System.out.println("idporten.client_id=" + clientId);
+                System.out.println("idporten.client_secret=" + secret.requiredString("client_secret"));
+            } else {
+                System.out.println("idporten.client_id=" + clientId);
             }
         } else if (command.equals("create")) {
             JsonArray clients = idPortenApiClient.listClients(Optional.of(clientName));
@@ -129,54 +119,71 @@ public class IdPortenApiClient {
         }
     }
 
-    private static JsonObject newClient(String clientName, String redirectUri, String postLogoutUri) {
-        return new JsonObject()
-                        .put("client_name", clientName)
-                        .put("description", clientName)
-                        .put("scopes", new JsonArray().add("openid").add("profile"))
-                        .put("redirect_uris", new JsonArray().add(redirectUri))
-                        .put("post_logout_uris", new JsonArray().add(postLogoutUri))
-                        .put("client_type", "PUBLIC")
-                        .put("token_reference", "OPAQUE")
-                        .put("refresh_token_usage", "ONETIME")
-                        .put("frontchannel_logout_session_required", false)
-                        .put("force_pkce", false)
-                        .put("grant_types", new JsonArray().add("authorization_code"))
-                        .put("token_endpoint_auth_method", "client_secret_post")
-                        .put("client_uri", "");
+    private JsonArray listClients(Optional<String> clientNameFilter) throws IOException {
+        JsonArray clients = new JsonArray();
+        HttpURLConnection connection = connect("GET", "/clients/");
+        JsonArray.parse(connection)
+                .objectStream()
+                .filter(o -> clientNameFilter.map(n -> o.requiredString("client_name").equals(n)).orElse(true))
+                .forEach(clients::add);
+        return clients;
     }
 
-    private void createSecret(String clientId) throws IOException {
-        URL url = new URL(apiEndpoint, "clients/" + clientId + "/secret");
-        try {
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            accessToken.authorize(conn);
-            conn.setRequestMethod("POST");
-            conn.setDoOutput(true);
-            JsonObject secret = JsonParser.parseToObject(conn);
-            logger.info("POST {} Response: {}", url, secret.toIndentedJson("  "));
-            System.out.println("idporten.client_secret=" + secret.requiredString("client_secret"));
-        } catch (JsonHttpException e) {
-            logger.error("POST {} Error: {}{}", url, e.getErrorContent(), e.getJsonError(), e);
-            throw e;
-        }
-
+    private JsonObject getClient(String clientId) throws IOException {
+        HttpURLConnection connection = connect("GET", "/clients/");
+        return JsonArray.parse(connection).objectStream()
+                .filter(o -> o.requiredString("client_id").equals(clientId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Could not find client " + clientId));
     }
 
     private JsonObject createClient(JsonObject clientObject) throws IOException {
-        URL url = new URL(apiEndpoint, "clients/");
         try {
-            JsonNode result = postJson(clientObject, url, "POST");
-            logger.info("POST {} Response: {}", url, result);
-            return (JsonObject)result;
+            HttpURLConnection conn = connect("POST", "clients/");
+            write(conn, clientObject);
+            JsonObject result = JsonObject.parse(conn);
+            logger.info("POST {} Response: {}", "clients/", result);
+            return result;
         } catch (JsonHttpException e) {
-            logger.error("PUT {} Error: {}{}", url, e.getErrorContent(), e.getJsonError(), e);
+            logger.error("PUT {} Error: {}{}", "clients/", e.getErrorContent(), e.getJsonError(), e);
+            throw e;
+        }
+    }
+
+    private static JsonObject newClient(String clientName, String redirectUri, String postLogoutUri) {
+        return new JsonObject()
+                .put("client_name", clientName)
+                .put("description", clientName)
+                .put("scopes", new JsonArray().add("openid").add("profile"))
+                .put("redirect_uris", new JsonArray().add(redirectUri))
+                .put("post_logout_uris", new JsonArray().add(postLogoutUri))
+                .put("frontchannel_logout_uri", postLogoutUri)
+                .put("client_type", "PUBLIC")
+                .put("token_reference", "OPAQUE")
+                .put("refresh_token_usage", "ONETIME")
+                .put("frontchannel_logout_session_required", false)
+                .put("force_pkce", false)
+                .put("grant_types", new JsonArray().add("authorization_code"))
+                .put("token_endpoint_auth_method", "client_secret_post")
+                .put("client_uri", "");
+    }
+
+    private JsonObject createSecret(String clientId) throws IOException {
+        String path = "clients/" + clientId + "/secret";
+        try {
+            HttpURLConnection conn = connect("POST", path);
+            JsonObject secret = JsonObject.parse(conn);
+            logger.info("POST {} Response: {}", path, secret.toIndentedJson("  "));
+            return secret;
+        } catch (JsonHttpException e) {
+            logger.error("POST {} Error: {}{}", path, e.getErrorContent(), e.getJsonError(), e);
             throw e;
         }
     }
 
     private void deleteDuplicates(String clientName) throws IOException {
-        parseToJsonArray(new URL(apiEndpoint, "/clients"))
+        HttpURLConnection connection = connect("GET", "/clients");
+        JsonArray.parse(connection)
                 .objectStream()
                 .filter(o -> o.requiredString("client_name").equals(clientName))
                 .sorted(Comparator.comparing((JsonObject o) -> ZonedDateTime.parse(o.requiredString("created"))).reversed())
@@ -200,134 +207,50 @@ public class IdPortenApiClient {
             clientObject.put("post_logout_redirect_uris", postLogoutUris);
             updateRequired = true;
         }
+        if (!clientObject.stringValue("frontchannel_logout_uri").orElse("").equals(postLogoutUri)) {
+            clientObject.put("frontchannel_logout_uri", postLogoutUri);
+            updateRequired = true;
+        }
 
         if (updateRequired) {
             clientObject.remove("client_orgno");
-            URL url = new URL(apiEndpoint, "clients/" + clientId);
             try {
-                JsonNode result = postJson(clientObject, url, "PUT");
-                logger.info("PUT {} Response: {}", url, result.toIndentedJson("  "));
+                HttpURLConnection conn = connect("PUT", "clients/" + clientId);
+                write(conn, clientObject);
+                JsonNode result = JsonObject.parse(conn);
+                logger.info("PUT {} Response: {}", "clients/" + clientId, result.toIndentedJson("  "));
             } catch (JsonHttpException e) {
-                logger.error("PUT {} Error: {}{}", url, e.getErrorContent(), e.getJsonError(), e);
+                logger.error("PUT {} Error: {}{}", "clients/" + clientId, e.getErrorContent(), e.getJsonError(), e);
             }
         } else {
             logger.info("No update needed: {}", clientObject.toIndentedJson("  "));
         }
     }
 
-    private static BearerToken requestAccessToken(Configuration idPortenConfig, URL oidcEndpoint) throws IOException, GeneralSecurityException {
-        KeyStore keyStore = KeyStore.getInstance("pkcs12");
-        keyStore.load(new FileInputStream(idPortenConfig.getRequiredProperty("keystore.file")), idPortenConfig.getRequiredProperty("keystore.password").toCharArray());
-        String alias = Collections.list(keyStore.aliases()).get(0);
-        X509Certificate certificate = (X509Certificate) keyStore.getCertificate(alias);
-        PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, idPortenConfig.getRequiredProperty("keystore.password").toCharArray());
-        return requestAccessToken(oidcEndpoint, idPortenConfig.getRequiredProperty("issuer"), certificate, privateKey);
-    }
-
-    private JsonObject getClient(String clientId) throws IOException {
-        URL url = new URL(apiEndpoint, "/clients/");
-        return parseToJsonArray(url).objectStream()
-                .filter(o -> o.requiredString("client_id").equals(clientId))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Could not find client " + clientId));
-    }
-
     private void deleteClient(String clientId) {
         logger.info("Deleting " + clientId);
         try {
-            HttpURLConnection conn = (HttpURLConnection) new URL(apiEndpoint, "clients/" + clientId).openConnection();
-            conn.setRequestMethod("DELETE");
-            accessToken.authorize(conn);
+            HttpURLConnection conn = connect("DELETE", "clients/" + clientId);
             logger.debug("DELETE {}", new URL(apiEndpoint, "clients/" + clientId));
-            verifySuccess(conn);
+            JsonHttpException.verifyResponseCode(conn);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private JsonArray listClients(Optional<String> clientNameFilter) throws IOException {
-        URL url = new URL(apiEndpoint, "/clients");
-        JsonArray clients = new JsonArray();
-        parseToJsonArray(url)
-                .objectStream()
-                .filter(o -> clientNameFilter.map(n -> o.requiredString("client_name").equals(n)).orElse(true))
-                .forEach(clients::add);
-        return clients;
-    }
-
-    private static BearerToken requestAccessToken(URL oidcEndpoint, String issuer, X509Certificate certificate, PrivateKey privateKey) throws GeneralSecurityException, IOException {
-        JsonObject jwtHeader = new JsonObject()
-                .put("alg", "RS256")
-                .put("x5c", new JsonArray().add(Base64.getEncoder().encodeToString(certificate.getEncoded())));
-        JsonObject jwtPayload = new JsonObject()
-                .put("aud", oidcEndpoint.toString())
-                .put("iss", issuer)
-                .put("jti", UUID.randomUUID().toString())
-                .put("scope", "idporten:dcr.read idporten:dcr.modify idporten:dcr.write")
-                .put("iat", System.currentTimeMillis() / 1000)
-                .put("exp", System.currentTimeMillis() / 1000 + 2*60);
-        String organizationJwt = createSignedJwt(jwtHeader, jwtPayload, privateKey);
-
-        URL tokenEndpoint = new URL(oidcEndpoint, "token");
-        String payload =
-                "grant_type=" + URLEncoder.encode("urn:ietf:params:oauth:grant-type:jwt-bearer", StandardCharsets.UTF_8)
-                + "&assertion=" + organizationJwt;
-        HttpURLConnection conn = (HttpURLConnection) tokenEndpoint.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setDoOutput(true);
-        try (OutputStream outputStream = conn.getOutputStream()) {
-            outputStream.write(payload.getBytes());
-        }
-        JsonObject response = JsonParser.parseToObject(conn);
-        logger.debug("POST {} response {}", tokenEndpoint, response);
-        logger.debug("access_token={}", response.requiredString("access_token"));
-
-        return new BearerToken(response.requiredString("access_token"));
-    }
-
-    private static String createSignedJwt(JsonObject jwtHeader, JsonObject jwtPayload, PrivateKey privateKey) throws GeneralSecurityException {
-        Base64.Encoder base64Encoder = Base64.getUrlEncoder();
-        String jwtContent =
-                base64Encoder.encodeToString(jwtHeader.toJson().getBytes())
-                + "."
-                + base64Encoder.encodeToString(jwtPayload.toJson().getBytes());
-        Signature signature = Signature.getInstance("SHA256withRSA");
-        signature.initSign(privateKey);
-        signature.update(jwtContent.getBytes());
-        return jwtContent + "." + base64Encoder.encodeToString(signature.sign());
-    }
-
-    private JsonNode postJson(JsonObject object, URL url, String method) throws IOException {
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        accessToken.authorize(conn);
-        conn.setRequestMethod(method);
+    private void write(HttpURLConnection conn, JsonNode json) throws IOException {
         conn.setDoOutput(true);
         conn.setRequestProperty("Content-Type", "application/json");
         try (OutputStream outputStream = conn.getOutputStream()) {
-            outputStream.write(object.toJson().getBytes());
-        }
-        verifySuccess(conn);
-        try (InputStream input = conn.getInputStream()) {
-            return JsonParser.parse(input);
+            outputStream.write(json.toJson().getBytes());
         }
     }
 
-    private JsonArray parseToJsonArray(URL url) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        accessToken.authorize(connection);
-        return parseToJsonArray(connection);
+    private HttpURLConnection connect(String method, String path) throws IOException {
+        HttpURLConnection conn = (HttpURLConnection) new URL(apiEndpoint, path).openConnection();
+        accessToken.authorize(conn);
+        conn.setRequestMethod(method);
+        return conn;
     }
 
-    private JsonArray parseToJsonArray(HttpURLConnection connection) throws IOException {
-        verifySuccess(connection);
-        try (InputStream input = connection.getInputStream()) {
-            return JsonParser.parseToArray(input);
-        }
-    }
-
-    private void verifySuccess(HttpURLConnection connection) throws IOException {
-        if (connection.getResponseCode() >= 400) {
-            throw new JsonHttpException(connection);
-        }
-    }
 }

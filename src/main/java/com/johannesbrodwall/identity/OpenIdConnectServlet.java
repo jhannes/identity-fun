@@ -333,7 +333,7 @@ public class OpenIdConnectServlet extends HttpServlet {
         try (OutputStream outputStream = connection.getOutputStream()) {
             outputStream.write(payload.getBytes());
         }
-        JsonObject jsonObject = JsonParser.parseToObject(connection);
+        JsonObject jsonObject = JsonObject.parse(connection);
         logger.debug("Refreshed session: {}", jsonObject);
 
         idProviderSession.setAccessToken(jsonObject.requiredString("access_token"));
@@ -374,7 +374,7 @@ public class OpenIdConnectServlet extends HttpServlet {
         logger.debug("Fetching from {}", endpoint);
         HttpURLConnection connection = (HttpURLConnection) endpoint.openConnection();
         authorization.authorize(connection);
-        JsonObject response = JsonParser.parseToObject(connection);
+        JsonObject response = JsonObject.parse(connection);
         logger.debug("Response: {}", response);
         return response;
     }

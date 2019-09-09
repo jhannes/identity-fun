@@ -15,9 +15,9 @@
         <azure.region>westeurope</azure.region>
         <azure.pricingTier>F1</azure.pricingTier>
         <azure.javaVersion>11</azure.javaVersion>
-        <!-- configure identityFun.azure.appName in you settings.xml or on the command line with -Dazure.appName=<unique prefix to .azurewebsites.net> -->
         <azure.appName>${identityFun.azure.appName}</azure.appName>
         <azure.resourceGroup>identity-fun</azure.resourceGroup>
+        <identityFun.azure.appName>Set this in your settings.xml or run mvn with -Dazure.appName=...</identityFun.azure.appName>
     </properties>
 
 
@@ -35,12 +35,12 @@
         <dependency>
             <groupId>org.logevents</groupId>
             <artifactId>logevents</artifactId>
-            <version>0.1.22</version>
+            <version>0.1.23</version>
         </dependency>
         <dependency>
             <groupId>org.jsonbuddy</groupId>
             <artifactId>jsonbuddy</artifactId>
-            <version>0.14.2</version>
+            <version>0.15</version>
         </dependency>
     </dependencies>
 

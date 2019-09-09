@@ -1,10 +1,8 @@
 package com.johannesbrodwall.identity;
 
 import org.jsonbuddy.JsonObject;
-import org.jsonbuddy.parse.JsonParser;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
 import java.util.Optional;
@@ -14,7 +12,7 @@ public class OpenidConfiguration implements Oauth2IssuerConfiguration {
     private JsonObject configuration;
 
     public OpenidConfiguration(String openIdIssuerUrl) throws IOException {
-        configuration = JsonParser.parseToObject(new URL(openIdIssuerUrl + "/.well-known/openid-configuration"));
+        configuration = JsonObject.parse(new URL(openIdIssuerUrl + "/.well-known/openid-configuration"));
     }
 
     @Override

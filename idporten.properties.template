@@ -1,0 +1,5 @@
+issuer=
+keystore.file=
+keystore.password=
+
+idporten.integrasjon_endpoint=https://integrasjon-ver2.difi.no

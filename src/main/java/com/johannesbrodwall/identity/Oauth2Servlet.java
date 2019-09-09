@@ -227,7 +227,7 @@ public abstract class Oauth2Servlet extends HttpServlet {
     JsonObject jsonParserParseToObject(URL endpoint, HttpAuthorization authorization) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) endpoint.openConnection();
         authorization.authorize(connection);
-        return JsonParser.parseToObject(connection);
+        return JsonObject.parse(connection);
     }
 
     private String toString(InputStream inputStream) throws IOException {

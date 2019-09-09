@@ -1,7 +1,6 @@
 package com.johannesbrodwall.identity;
 
 import org.jsonbuddy.JsonObject;
-import org.jsonbuddy.parse.JsonParser;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -19,7 +18,7 @@ import java.util.Base64;
 import java.util.HashMap;
 
 public class CertificateCache {
-    private static HashMap<String, PublicKey> publicKeys = new HashMap<String, PublicKey>();
+    private static HashMap<String, PublicKey> publicKeys = new HashMap<>();
     private static CertificateFactory certificateFactory;
 
     public static PublicKey get(String keyId, String iss) throws GeneralSecurityException {
@@ -38,7 +37,7 @@ public class CertificateCache {
         if (certificateFactory == null) {
             certificateFactory = CertificateFactory.getInstance("X.509");
         }
-        JsonObject jsonObject = JsonParser.parseToObject(jwksUrl);
+        JsonObject jsonObject = JsonObject.parse(jwksUrl);
         JsonObject key = jsonObject.requiredArray("keys")
                 .objectStream()
                 .filter(o -> o.requiredString("kid").equals(keyId))
@@ -58,6 +57,6 @@ public class CertificateCache {
     }
 
     private static JsonObject fetchOpenidConfiguration(String iss) throws IOException {
-        return JsonParser.parseToObject(new URL(iss + "/.well-known/openid-configuration"));
+        return JsonObject.parse(new URL(iss + "/.well-known/openid-configuration"));
     }
 }
