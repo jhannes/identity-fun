@@ -56,6 +56,7 @@ class IdPortenAccessTokenFactory {
                 .put("iat", System.currentTimeMillis() / 1000)
                 .put("exp", System.currentTimeMillis() / 1000 + 2*60);
         String organizationJwt = createSignedJwt(jwtHeader, jwtPayload, privateKey);
+        logger.debug("Requesting access token for JWT: {}", organizationJwt);
 
         URL tokenEndpoint = new URL(oidcEndpoint, "token");
         String payload =

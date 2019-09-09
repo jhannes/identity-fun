@@ -82,7 +82,7 @@ public class IdPortenApiClient {
             idPortenApiClient.deleteDuplicates(clientName);
         } else if (command.equals("update")) {
             String clientId = oauth2Config.getRequiredProperty("idporten.client_id");
-            String redirectUri = oauth2Config.getRequiredProperty("idporten.redirect_uri");
+            String redirectUri = getRedirectUri(oauth2Config);
             String postLogoutUri = redirectUri.replace("/oauth2callback", "/logout");
             idPortenApiClient.updateClientUris(clientId, redirectUri, postLogoutUri);
         } else if (command.equals("DELETE")) {
@@ -119,6 +119,13 @@ public class IdPortenApiClient {
         }
     }
 
+    private static String getRedirectUri(Configuration oauth2Config) {
+        if (System.getProperty("idporten.redirect_uri") != null) {
+            return System.getProperty("idporten.redirect_uri");
+        }
+        return oauth2Config.getRequiredProperty("idporten.redirect_uri");
+    }
+
     private JsonArray listClients(Optional<String> clientNameFilter) throws IOException {
         JsonArray clients = new JsonArray();
         HttpURLConnection connection = connect("GET", "/clients/");
@@ -153,7 +160,7 @@ public class IdPortenApiClient {
     private static JsonObject newClient(String clientName, String redirectUri, String postLogoutUri) {
         return new JsonObject()
                 .put("client_name", clientName)
-                .put("description", clientName)
+                .put("description", "Delete after JavaZone 2019")
                 .put("scopes", new JsonArray().add("openid").add("profile"))
                 .put("redirect_uris", new JsonArray().add(redirectUri))
                 .put("post_logout_uris", new JsonArray().add(postLogoutUri))
