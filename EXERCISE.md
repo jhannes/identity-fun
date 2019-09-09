@@ -261,7 +261,7 @@ This guide assumes you are member of a Slack community already, but you don't ne
    * [Get a list of private channels](https://api.slack.com/methods/conversations.list) that the user is member of: `curl --header "Authorization: Bearer $ACCESS_TOKEN" https://slack.com/api/conversations.list?types=private_channel | jq ".channels[] | [ .id, .name, .is_private ]"`
 
 
-## Summary
+## Summary: Using Bash to simulate Oauth2 logins
 
 *Uses Bash shell, cUrl and [jq](https://stedolan.github.io/jq/)*
 
@@ -297,3 +297,4 @@ Alternatively, if you have set up your client as a PUBLIC client (one that canno
 7. Examine the token response:
    * `ID_TOKEN_PAYLOAD=$(echo $ID_TOKEN | cut -d. -f2 | base64 -d)`
    * `echo $ID_TOKEN_PAYLOAD | jq`
+
