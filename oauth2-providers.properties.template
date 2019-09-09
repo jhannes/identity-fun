@@ -1,17 +1,13 @@
-
 google.client_id=
 google.client_secret=
-#google.redirect_uri=http://localhost:8080/id/google/oauth2callback
 
 azure.client_id=
 azure.client_secret=
-#azure.redirect_uri=http://localhost:8080/id/azure/oauth2callback
 
 # Should be on the form https://<slack team>.slack.com/oauth/authorize
 slack.authorization_endpoint=
 slack.client_id=
 slack.client_secret=
-#slack.redirect_uri=http://localhost:8080/id/slack/oauth2callback
 
 idporten.client_id=
 idporten.client_secret=
@@ -21,6 +17,5 @@ idporten.client_secret=
 mssingle.issuer_uri=
 mssingle.client_id=
 mssingle.client_secret=
-#mssingle.redirect_uri=http://localhost:8080/id/mssingle/oauth2callback
 
 
