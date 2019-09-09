@@ -2,7 +2,7 @@ package com.johannesbrodwall.identity;
 
 import com.johannesbrodwall.identity.util.HttpAuthorization;
 import org.jsonbuddy.JsonObject;
-import org.jsonbuddy.parse.JsonParser;
+import org.jsonbuddy.parse.JsonHttpException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -91,6 +91,9 @@ public class OpenIdConnectServlet extends HttpServlet {
                     + "<div><a href='/'>Front page</a></div>"
                     + "</body>"
                     + "</html>");
+        } catch (Exception e) {
+            logger.error("Error while handing request {}", req.getPathInfo(), e);
+            resp.sendError(500, "Problems accessing " + req.getRequestURI() + ": " + e);
         }
     }
 
@@ -232,21 +235,16 @@ public class OpenIdConnectServlet extends HttpServlet {
         logger.debug("Fetching token from POST {} with payload: {}", tokenEndpoint, payload);
         HttpURLConnection connection = (HttpURLConnection) tokenEndpoint.openConnection();
         connection.setDoOutput(true);
-        connection.setDoInput(true);
         try (OutputStream outputStream = connection.getOutputStream()) {
             outputStream.write(payload.getBytes());
         }
+        JsonHttpException.verifyResponseCode(connection);
 
-        String response;
-        if (connection.getResponseCode() < 400) {
-            response = toString(connection.getInputStream());
-        } else {
-            response = toString(connection.getErrorStream());
-        }
+        String response = toString(connection.getInputStream());
 
         logger.debug("Token response: {}", response);
         req.getSession().setAttribute("token_response", response);
-        JsonObject jsonObject = JsonParser.parseToObject(response);
+        JsonObject jsonObject = JsonObject.parse(response);
         resp.setContentType("text/html");
 
         resp.getWriter().write("<!DOCTYPE html>\n"
@@ -261,10 +259,8 @@ public class OpenIdConnectServlet extends HttpServlet {
                 + jsonObject.stringValue("id_token")
                     .map(idToken -> "<button onclick='navigator.clipboard.writeText(\"" + idToken + "\").then(console.log)'>Copy id_token to clipboard</button>")
                     .orElse("")
-                + (connection.getResponseCode() < 400
-                    ?   "<div>Normally you application will directly use the token to establish an application session</div>"
-                        + "<h3><a href='" + req.getServletPath() + "/session'>Create session</a></h3>"
-                    : "")
+                + "<div>Normally you application will directly use the token to establish an application session</div>"
+                + "<div><a href='" + req.getServletPath() + "/session'>Create session</a></div>"
                 + "<div><a href='/'>Front page</a></div>"
                 + "</body>"
                 + "</html>");
@@ -274,7 +270,7 @@ public class OpenIdConnectServlet extends HttpServlet {
         OpenidConfiguration issuerConfig = getIssuerConfig();
         String clientId = configuration.getClientId();
 
-        JsonObject tokenResponse = JsonParser.parseToObject((String) req.getSession().getAttribute("token_response"));
+        JsonObject tokenResponse = JsonObject.parse((String) req.getSession().getAttribute("token_response"));
         logger.debug("Access token: {} expires {}",
                 tokenResponse.requiredString("access_token"),
                 tokenResponse.stringValue("expires_on").orElse(""));
