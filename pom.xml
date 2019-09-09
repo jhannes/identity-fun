@@ -42,6 +42,11 @@
             <artifactId>jsonbuddy</artifactId>
             <version>0.15</version>
         </dependency>
+        <dependency>
+            <groupId>com.microsoft.azure</groupId>
+            <artifactId>applicationinsights-core</artifactId>
+            <version>2.5.0-BETA.3</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -105,14 +110,6 @@
                         <resource>
                             <directory>${project.basedir}/target</directory>
                             <include>${project.build.finalName}.jar</include>
-                        </resource>
-                        <resource>
-                            <directory>${project.basedir}/src/azure/resources</directory>
-                            <include>logevents.properties</include>
-                        </resource>
-                        <resource>
-                            <directory>${project.basedir}/src/azure/resources</directory>
-                            <include>oauth2-providers.properties</include>
                         </resource>
                     </resources>
                 </configuration>

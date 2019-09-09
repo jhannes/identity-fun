@@ -1,5 +1,7 @@
 package com.johannesbrodwall.identity;
 
+import org.logevents.extend.servlets.LogEventsServlet;
+
 import javax.servlet.DispatcherType;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
@@ -25,7 +27,7 @@ public class IdentityWebApp implements ServletContextListener {
     @Override
     public void contextInitialized(ServletContextEvent event) {
         ServletContext context = event.getServletContext();
-        //context.addServlet("logs", new LogEventsServlet()).addMapping("/logs/*");
+        context.addServlet("logs", new LogEventsServlet()).addMapping("/logs/*");
 
         addOpenIdConnectServlet(context, "google");
         addOpenIdConnectServlet(context, "azure");

@@ -1,7 +1,6 @@
 .idea/
 *.iml
 target/
-oauth2-providers.properties
-oauth2-public-providers.properties
-idporten.properties
+/*.properties
 *.p12
+logs/

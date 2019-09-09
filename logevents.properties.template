@@ -1,0 +1,12 @@
+# Get from https://console.developers.google.com/apis/credentials or https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+observer.servlet.openIdIssuer=
+observer.servlet.clientId=
+observer.servlet.clientSecret=
+
+# Needed for Google, but not for Azure
+#observer.servlet.requiredClaim.email=
+#observer.servlet.requiredClaim.email_verified=true
+
+root=DEBUG file,console
+#root=DEBUG file,console,applicationInsights
+#root=DEBUG file,console,servlet,applicationInsights
