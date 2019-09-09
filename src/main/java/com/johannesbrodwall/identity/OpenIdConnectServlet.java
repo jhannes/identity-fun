@@ -14,8 +14,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Optional;
@@ -111,17 +109,12 @@ public class OpenIdConnectServlet extends HttpServlet {
         String loginState = UUID.randomUUID().toString();
         req.getSession().setAttribute("loginState", loginState);
 
-        String domainHint = req.getParameter("domain_hint");
+        URL authorizationEndpoint = null;
+        String clientId = null;
+        String redirectUri = getRedirectUri(req);
+        String scope = null;
 
-        URL authorizationEndpoint = configuration.getAuthorizationEndpoint();
-        URL authenticationRequest = new URL(authorizationEndpoint + "?"
-                + "client_id=" + configuration.getClientId() + "&"
-                + "redirect_uri=" + configuration.getRedirectUri(getDefaultRedirectUri(req)) + "&"
-                + "response_type=" + "code" + "&"
-                + "scope=" + configuration.getScopesString() + "&"
-                + "state=" + loginState
-                + (domainHint != null ? "&domain_hint=" + domainHint : "")
-        );
+        URL authenticationRequest = new URL(authorizationEndpoint + "?...&x=y&p=q...");
 
         logger.debug("Generating authentication request: {}", authenticationRequest);
 
@@ -197,37 +190,14 @@ public class OpenIdConnectServlet extends HttpServlet {
             return;
         }
 
-        String payload = "client_id=" + configuration.getClientId()
-                + "&" + "client_secret=" + "xxxxxxx"
-                + "&" + "redirect_uri=" + configuration.getRedirectUri(getDefaultRedirectUri(req))
-                + "&" + "code=" + code
-                + "&" + "grant_type=" + "authorization_code";
-
-        resp.setContentType("text/html");
-
-
-        resp.getWriter().write("<!DOCTYPE html>\n"
-                + "<html>"
-                + "<head>"
-                + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
-                + "</head>"
-                + "<body>"
-                + "<h2>Step 2: Client received callback with code</h2>"
-                + "<div><a href='" + req.getServletPath() + "/token?" + payload + "'>fetch token with POST to " + tokenEndpoint + "</a></div>"
-                + "<div>"
-                + "Normally your app would directly perform a POST to <code>" + tokenEndpoint + "</code> with this payload:<br />"
-                + "<code>&nbsp;&nbsp;&nbsp;&nbsp;"
-                + payload.replaceAll("[?&]", "<br />&nbsp;&nbsp;&nbsp;&nbsp;$0")
-                + "</code>"
-                + "</div></body></html>");
+        getToken(req, resp, configuration);
     }
 
     private void getToken(HttpServletRequest req, HttpServletResponse resp, Oauth2Configuration configuration) throws IOException {
-        URL tokenEndpoint = configuration.getTokenEndpoint();
+        String code = null;
 
-        String payload = req.getQueryString();
-        payload = payload.replace("xxxxxxx", URLEncoder.encode(configuration.getClientSecret(), StandardCharsets.UTF_8.toString()));
-
+        URL tokenEndpoint = null;
+        String payload = null;
         logger.debug("Fetching token from POST {} with payload: {}", tokenEndpoint, payload);
         HttpURLConnection connection = (HttpURLConnection) tokenEndpoint.openConnection();
         connection.setDoOutput(true);
@@ -267,7 +237,7 @@ public class OpenIdConnectServlet extends HttpServlet {
                 tokenResponse.requiredString("access_token"),
                 tokenResponse.stringValue("expires_on").orElse(""));
 
-        String idToken = tokenResponse.requiredString("id_token");
+        String idToken = null;
         logger.debug("Decoding session from JWT: {}", idToken);
         JwtToken idTokenJwt = new JwtToken(idToken, true);
         logger.debug("Validated token with iss={} sub={} aud={}", idTokenJwt.iss(), idTokenJwt.sub(), idTokenJwt.aud());
@@ -284,7 +254,9 @@ public class OpenIdConnectServlet extends HttpServlet {
         session.setIdToken(idTokenJwt);
         session.setEndSessionEndpoint(configuration.getEndSessionEndpoint());
 
-        session.setUserinfo(jsonParserParseToObject(issuerConfig.getUserinfoEndpoint(), session.getAccessBearerToken()));
+        URL userinfoEndpoint = null;
+        HttpAuthorization accessToken = null;
+        session.setUserinfo(jsonParserParseToObject(userinfoEndpoint, accessToken));
 
         UserSession.getFromSession(req).addSession(session);
         resp.sendRedirect("/");
@@ -300,7 +272,7 @@ public class OpenIdConnectServlet extends HttpServlet {
 
     private void refreshAccessToken(HttpServletRequest req, Oauth2Configuration configuration) throws IOException {
         String clientId = configuration.getClientId();
-        String redirectUri = configuration.getRedirectUri(getDefaultRedirectUri(req));
+        String redirectUri = getRedirectUri(req);
         String clientSecret = configuration.getClientSecret();
         URL tokenEndpoint = configuration.getTokenEndpoint();
 

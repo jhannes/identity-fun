@@ -110,20 +110,15 @@ public abstract class Oauth2Servlet extends HttpServlet {
     }
 
     private void authenticate(HttpServletRequest req, HttpServletResponse resp, Oauth2Configuration oauth2Configuration) throws IOException {
-        URL authorizationEndpoint = oauth2Configuration.getAuthorizationEndpoint();
-        String clientId = oauth2Configuration.getClientId();
-        String redirectUri = getRedirectUri(req);
-        String scope = oauth2Configuration.getScopesString();
-
         String loginState = UUID.randomUUID().toString();
         req.getSession().setAttribute("loginState", loginState);
 
-        URL authenticationRequest = new URL(authorizationEndpoint + "?"
-                + "client_id=" + clientId + "&"
-                + "redirect_uri=" + redirectUri + "&"
-                + "response_type=" + responseType + "&"
-                + "scope=" + scope + "&"
-                + "state=" + loginState);
+        URL authorizationEndpoint = null;
+        String clientId = null;
+        String redirectUri = getRedirectUri(req);
+        String scope = null;
+
+        URL authenticationRequest = new URL(authorizationEndpoint + "?...&x=y&p=q...");
 
         logger.debug("Generating authentication request: {}", authenticationRequest);
 
@@ -140,10 +135,6 @@ public abstract class Oauth2Servlet extends HttpServlet {
     }
 
     private void oauth2callback(HttpServletRequest req, HttpServletResponse resp, Oauth2Configuration configuration) throws IOException {
-        String clientId = configuration.getClientId();
-        String redirectUri = getRedirectUri(req);
-        URL tokenEndpoint = configuration.getTokenEndpoint();
-
         String code = req.getParameter("code");
         String state = req.getParameter("state");
 
@@ -159,31 +150,12 @@ public abstract class Oauth2Servlet extends HttpServlet {
             logger.warn("Login state DOES NOT match callback state: {} != {}", loginState, state);
         }
 
-        String payload = "client_id=" + clientId
-                + "&" + "client_secret=" + "xxxxxxx"
-                + "&" + "redirect_uri=" + redirectUri
-                + "&" + "code=" + code
-                + "&" + "grant_type=" + grantType;
-
-        resp.setContentType("text/html");
-
-        resp.getWriter().write("<html>" +
-                "<h2>Step 2: Client received callback with code</h2>" +
-                "<div><a href='" + req.getServletPath() + "/token?" + payload + "'>fetch token with POST to " + tokenEndpoint + "</a></div>" +
-                "<div>" +
-                "Normally your app would directly perform a POST to <code>" + tokenEndpoint + "</code> with this payload:<br />" +
-                "<code>&nbsp;&nbsp;&nbsp;&nbsp;" +
-                payload.replaceAll("[?&]", "<br />&nbsp;&nbsp;&nbsp;&nbsp;$0") +
-                "</code>" +
-                "</div></html>");
+        getToken(req, resp, configuration);
     }
 
     private void getToken(HttpServletRequest req, HttpServletResponse resp, Oauth2Configuration configuration) throws IOException {
-        String clientSecret = configuration.getClientSecret();
-        URL tokenEndpoint = configuration.getTokenEndpoint();
-        String payload = req.getQueryString();
-        payload = payload.replace("xxxxxxx", URLEncoder.encode(clientSecret, StandardCharsets.UTF_8.toString()));
-
+        URL tokenEndpoint = null;
+        String payload = null;
         logger.debug("Fetching token from POST {} with payload: {}", tokenEndpoint, payload);
         HttpURLConnection connection = (HttpURLConnection) tokenEndpoint.openConnection();
         connection.setDoOutput(true);
@@ -208,10 +180,10 @@ public abstract class Oauth2Servlet extends HttpServlet {
     }
 
     private void setupSession(HttpServletRequest req, HttpServletResponse resp, Oauth2Configuration configuration) throws IOException {
-        URL authorizationEndpoint = configuration.getAuthorizationEndpoint();
+        URL authorizationEndpoint = null;
         JsonObject tokenResponse = JsonObject.parse((String) req.getSession().getAttribute("token_response"));
 
-        BearerToken accessToken = new BearerToken(tokenResponse.requiredString("access_token"));
+        BearerToken accessToken = null;
         JsonObject profile = fetchUserProfile(accessToken);
 
         UserSession.Oauth2ProviderSession idpSession = new UserSession.Oauth2ProviderSession(providerName);
