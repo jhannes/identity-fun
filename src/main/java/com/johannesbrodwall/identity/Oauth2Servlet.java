@@ -215,7 +215,7 @@ public abstract class Oauth2Servlet extends HttpServlet {
         idpSession.setAccessToken(accessToken.toString());
         idpSession.setUserinfo(profile);
 
-        UserSession.getFromSession(req).addSession(idpSession);
+        UserSession.getFromSession(req).addSession(idpSession, null);
 
         resp.sendRedirect("/");
     }

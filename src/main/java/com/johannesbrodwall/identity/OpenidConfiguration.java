@@ -40,6 +40,7 @@ public class OpenidConfiguration implements Oauth2IssuerConfiguration {
     }
 
     public String getIssuer() {
+        //return "https://oidc.difi.no/idporten-oidc-provider/";
         return configuration.requiredString("issuer");
     }
 

@@ -23,12 +23,15 @@ public class IdentityServer {
     }
 
     private void start() throws Exception {
+        new UserAccountSyncWorker().start();
+
         setupServer();
         server.start();
         logger.warn("Started {}", server.getURI());
     }
 
     private void setupServer() throws IOException {
+        server.setRequestLog(new LogEventsRequestLog());
         server.addConnector(createConnector());
         server.setHandler(createWebAppContext());
     }

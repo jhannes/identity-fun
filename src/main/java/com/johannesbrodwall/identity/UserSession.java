@@ -29,12 +29,16 @@ public class UserSession {
         return session;
     }
 
-    public void addSession(IdProviderSession session) {
+    public void addSession(IdProviderSession session, UserRole roles) {
         idProviderSessions.add(session);
     }
 
     public void removeSession(String servletPath) {
         idProviderSessions.removeIf(idProviderSession -> idProviderSession.getControlUrl().equals(servletPath));
+    }
+
+    public String getUserName() {
+        return idProviderSessions.isEmpty() ? null : idProviderSessions.get(0).getUserDescription();
     }
 
     public interface IdProviderSession {
@@ -50,6 +54,8 @@ public class UserSession {
         String getRefreshToken();
 
         JsonObject getUserinfo();
+
+        String getUserDescription();
     }
 
     public static class OpenIdConnectSession implements IdProviderSession {
@@ -97,6 +103,15 @@ public class UserSession {
         }
 
         @Override
+        public String getUserDescription() {
+            JsonObject jwt = idToken.getPayload();
+            return jwt.stringValue("upn")
+                    .or(() -> jwt.stringValue("email"))
+                    .or(() -> jwt.stringValue("pid"))
+                    .orElse(null);
+        }
+
+        @Override
         public String getRefreshToken() {
             return refreshToken.orElse(null);
         }
@@ -133,6 +148,11 @@ public class UserSession {
         private BearerToken accessToken;
         private String issuer;
         private JsonObject userinfo;
+
+        @Override
+        public String getUserDescription() {
+            return userinfo.toJson();
+        }
 
         @Override
         public String getControlUrl() {
