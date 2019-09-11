@@ -21,7 +21,9 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,6 +33,7 @@ public class OpenIdConnectServlet extends HttpServlet {
     private final String providerName;
     private final Optional<String> openIdIssuerUrl;
     private Optional<String> consoleUrl;
+    private UserRepository userRepository = new UserRepository();
 
     public OpenIdConnectServlet(String providerName, String openIdIssuerUrl, String consoleUrl) {
         this.providerName = providerName;
@@ -79,15 +82,15 @@ public class OpenIdConnectServlet extends HttpServlet {
                     + "<h2>Setup error with provider <code>" + providerName + "</code></h2>"
                     + "<div><code>" + e.getMessage() + "</code></div>"
                     +  consoleUrl
-                        .map(url ->
-                                "<h2><a target='_blank' href='"  + url + "'>Setup " + providerName + "</a></h2>"
-                                + "<div>Use " +
-                                        "<code>" + getRedirectUri(req) + "</code>" +
-                                        " as redirect_uri " +
-                                        "<button onclick='navigator.clipboard.writeText(\"" + getRedirectUri(req) + "\")'>clipboard</button>" +
+                    .map(url ->
+                            "<h2><a target='_blank' href='"  + url + "'>Setup " + providerName + "</a></h2>"
+                                    + "<div>Use " +
+                                    "<code>" + getRedirectUri(req) + "</code>" +
+                                    " as redirect_uri " +
+                                    "<button onclick='navigator.clipboard.writeText(\"" + getRedirectUri(req) + "\")'>clipboard</button>" +
                                     "</div>"
-                        )
-                        .orElse("")
+                    )
+                    .orElse("")
                     + "<div><a href='/'>Front page</a></div>"
                     + "</body>"
                     + "</html>");
@@ -132,19 +135,19 @@ public class OpenIdConnectServlet extends HttpServlet {
         resp.setContentType("text/html");
 
         resp.getWriter().write("<!DOCTYPE html>\n"
-                        + "<html>"
-                        + "<head>"
-                        + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
-                        + "</head>"
-                        + "<body>"
-                        + "<h2>Step 1: Redirect to authorization endpoint</h2>"
-                        + "<div><a href='" + authenticationRequest + "'>authenticate at " + authorizationEndpoint + "</a></div>"
-                        + "<div>"
-                        + "Normally your app would redirect directly to the following URL: <br />"
-                        + "<code>"
-                        + authenticationRequest.toString().replaceAll("[?&]", "<br />&nbsp;&nbsp;&nbsp;&nbsp;$0")
-                        + "</code>"
-                        + "</div></body></html>");
+                + "<html>"
+                + "<head>"
+                + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+                + "</head>"
+                + "<body>"
+                + "<h2>Step 1: Redirect to authorization endpoint</h2>"
+                + "<div><a href='" + authenticationRequest + "'>authenticate at " + authorizationEndpoint + "</a></div>"
+                + "<div>"
+                + "Normally your app would redirect directly to the following URL: <br />"
+                + "<code>"
+                + authenticationRequest.toString().replaceAll("[?&]", "<br />&nbsp;&nbsp;&nbsp;&nbsp;$0")
+                + "</code>"
+                + "</div></body></html>");
     }
 
     private Oauth2Configuration getOauth2Configuration() throws IOException {
@@ -257,8 +260,8 @@ public class OpenIdConnectServlet extends HttpServlet {
                 + "<div>This was the response from " + tokenEndpoint + "</div>"
                 + "<pre>" + response + "</pre>"
                 + jsonObject.stringValue("id_token")
-                    .map(idToken -> "<button onclick='navigator.clipboard.writeText(\"" + idToken + "\").then(console.log)'>Copy id_token to clipboard</button>")
-                    .orElse("")
+                .map(idToken -> "<button onclick='navigator.clipboard.writeText(\"" + idToken + "\").then(console.log)'>Copy id_token to clipboard</button>")
+                .orElse("")
                 + "<div>Normally you application will directly use the token to establish an application session</div>"
                 + "<div><a href='" + req.getServletPath() + "/session'>Create session</a></div>"
                 + "<div><a href='/'>Front page</a></div>"
@@ -278,12 +281,13 @@ public class OpenIdConnectServlet extends HttpServlet {
         String idToken = tokenResponse.requiredString("id_token");
         logger.debug("Decoding session from JWT: {}", idToken);
         JwtToken idTokenJwt = new JwtToken(idToken, true);
+        MDC.put("userPid", idTokenJwt.getPayload().stringValue("pid").orElse(null));
         logger.debug("Validated token with iss={} sub={} aud={}", idTokenJwt.iss(), idTokenJwt.sub(), idTokenJwt.aud());
         if (!clientId.equals(idTokenJwt.aud())) {
             logger.warn("Token was not intended for us! {} != {}", clientId, idTokenJwt.aud());
         }
         if (!issuerConfig.getIssuer().equals(idTokenJwt.iss())) {
-            logger.warn("Token was not issued by expected OpenID provider! {} != {}", issuerConfig.getIssuer(), idTokenJwt.iss());
+            logger.error("Token was not issued by expected OpenID provider! {} != {}", issuerConfig.getIssuer(), idTokenJwt.iss());
         }
 
         UserSession.OpenIdConnectSession session = new UserSession.OpenIdConnectSession();
@@ -295,7 +299,14 @@ public class OpenIdConnectServlet extends HttpServlet {
 
         session.setUserinfo(jsonParserParseToObject(issuerConfig.getUserinfoEndpoint(), session.getAccessBearerToken()));
 
-        UserSession.getFromSession(req).addSession(session);
+        UserRole roles = userRepository.getRoles(idTokenJwt.getPayload().requiredString("pid"));
+
+        UserSession.getFromSession(req).addSession(session, roles);
+        List<String> writerRoles = Arrays.asList("write", "admin");
+        if (writerRoles.contains(roles.getRole().toString())) {
+            req.getSession().setAttribute("writer", true);
+        }
+
         resp.sendRedirect("/");
     }
 
