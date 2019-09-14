@@ -29,6 +29,7 @@ public class IdentityServer {
     }
 
     private void setupServer() throws IOException {
+        server.setRequestLog(new LogEventsRequestLog());
         server.addConnector(createConnector());
         server.setHandler(createWebAppContext());
     }

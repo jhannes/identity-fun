@@ -16,6 +16,6 @@ public class BearerToken implements HttpAuthorization {
 
     @Override
     public String toString() {
-        return value;
+        return "Authorization: Bearer " + value;
     }
 }

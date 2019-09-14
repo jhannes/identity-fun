@@ -35,16 +35,16 @@ class IdPortenAccessTokenFactory {
         this.oidcEndpoint = oidcEndpoint;
     }
 
-    public BearerToken requestAccessToken() throws IOException, GeneralSecurityException {
+    public BearerToken requestAccessToken(String issuer, String scopes) throws IOException, GeneralSecurityException {
         KeyStore keyStore = KeyStore.getInstance("pkcs12");
         keyStore.load(new FileInputStream(idPortenConfig.getRequiredProperty("keystore.file")), idPortenConfig.getRequiredProperty("keystore.password").toCharArray());
         String alias = Collections.list(keyStore.aliases()).get(0);
         X509Certificate certificate = (X509Certificate) keyStore.getCertificate(alias);
         PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, idPortenConfig.getRequiredProperty("keystore.password").toCharArray());
-        return requestAccessToken(oidcEndpoint, idPortenConfig.getRequiredProperty("issuer"), certificate, privateKey);
+        return requestAccessToken(oidcEndpoint, issuer, certificate, privateKey, scopes);
     }
 
-    private BearerToken requestAccessToken(URL oidcEndpoint, String issuer, X509Certificate certificate, PrivateKey privateKey) throws GeneralSecurityException, IOException {
+    private BearerToken requestAccessToken(URL oidcEndpoint, String issuer, X509Certificate certificate, PrivateKey privateKey, String scopes) throws GeneralSecurityException, IOException {
         JsonObject jwtHeader = new JsonObject()
                 .put("alg", "RS256")
                 .put("x5c", new JsonArray().add(Base64.getEncoder().encodeToString(certificate.getEncoded())));
@@ -52,9 +52,10 @@ class IdPortenAccessTokenFactory {
                 .put("aud", oidcEndpoint.toString())
                 .put("iss", issuer)
                 .put("jti", UUID.randomUUID().toString())
-                .put("scope", "idporten:dcr.read idporten:dcr.modify idporten:dcr.write")
+                .put("scope", scopes)
                 .put("iat", System.currentTimeMillis() / 1000)
                 .put("exp", System.currentTimeMillis() / 1000 + 2*60);
+        logger.debug("Signing JWT with payload: {}", jwtPayload.toJson());
         String organizationJwt = createSignedJwt(jwtHeader, jwtPayload, privateKey);
         logger.debug("Requesting access token for JWT: {}", organizationJwt);
 
@@ -62,6 +63,7 @@ class IdPortenAccessTokenFactory {
         String payload =
                 "grant_type=" + URLEncoder.encode("urn:ietf:params:oauth:grant-type:jwt-bearer", StandardCharsets.UTF_8)
                         + "&assertion=" + organizationJwt;
+        logger.debug("\n{} {}\n{}", "POST", tokenEndpoint, payload);
         HttpURLConnection conn = (HttpURLConnection) tokenEndpoint.openConnection();
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);

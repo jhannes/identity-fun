@@ -55,7 +55,11 @@ public class IdPortenApiClient {
         URL apiEndpoint = new URL(idPortenConfig.getRequiredProperty("idporten.integrasjon_endpoint"));
 
         URL oidcEndpoint = new URL(oauth2Config.getProperty("id_porten.issuer_uri").orElse("https://oidc-ver2.difi.no/idporten-oidc-provider") + "/");
-        BearerToken accessToken = new IdPortenAccessTokenFactory(idPortenConfig, oidcEndpoint).requestAccessToken();
+        final IdPortenAccessTokenFactory idPortenAccessTokenFactory = new IdPortenAccessTokenFactory(idPortenConfig, oidcEndpoint);
+        BearerToken accessToken = idPortenAccessTokenFactory.requestAccessToken(
+                idPortenConfig.getRequiredProperty("issuer"),
+                "idporten:dcr.read idporten:dcr.modify idporten:dcr.write"
+        );
 
         IdPortenApiClient idPortenApiClient = new IdPortenApiClient(apiEndpoint, accessToken);
 
@@ -65,7 +69,7 @@ public class IdPortenApiClient {
             System.exit(1);
         }
 
-        System.out.println("Please enter command: [list [<client_name>]|create|findClient|show|update|deleteDuplicates|help]");
+        System.out.println("Please enter command: [list [<client_name>]|create|findClient|show|update|deleteDuplicates|help|scopes]");
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
         String input = reader.readLine().trim();
 
@@ -73,7 +77,14 @@ public class IdPortenApiClient {
         String command = parts[0];
         if (command.equalsIgnoreCase("list")) {
             JsonArray clients = idPortenApiClient.listClients(parts.length > 1 ? Optional.of(parts[1]) : Optional.empty());
-            logger.info("Clients: {}", clients.toIndentedJson("  "));
+            JsonArray output = new JsonArray();
+            clients.objectStream()
+                    .map(o -> new JsonObject().put("client_id", o.requiredString("client_id")).put("client_name", o.requiredString("client_name")).put("scopes", o.requiredArray("scopes")))
+                    .forEach(output::add);
+            logger.info("Clients: {}",  clients.toIndentedJson("  "));
+        } else if (command.equals("scopes")) {
+            JsonArray scopes = idPortenApiClient.listScopes();
+            logger.info("Scopes: {}", scopes.toIndentedJson("  "));
         } else if (command.equals("show")) {
             String clientId = oauth2Config.getRequiredProperty("idporten.client_id");
             JsonObject clientObject = idPortenApiClient.getClient(clientId);
@@ -83,7 +94,7 @@ public class IdPortenApiClient {
         } else if (command.equals("update")) {
             String clientId = oauth2Config.getRequiredProperty("idporten.client_id");
             String redirectUri = getRedirectUri(oauth2Config);
-            String postLogoutUri = redirectUri.replace("/oauth2callback", "/logout");
+            String postLogoutUri = oauth2Config.getProperty("idporten.post_logout_redirect_uri").orElse(redirectUri.replace("/oauth2callback", "/logout"));
             idPortenApiClient.updateClientUris(clientId, redirectUri, postLogoutUri);
         } else if (command.equals("DELETE")) {
             String clientId = oauth2Config.getRequiredProperty("idporten.client_id");
@@ -117,6 +128,10 @@ public class IdPortenApiClient {
         } else {
             System.err.println("Illegal command [" + input + "]");
         }
+    }
+
+    private JsonArray listScopes() throws IOException {
+        return JsonArray.parse(connect("GET", "/scopes?inactive=true"));
     }
 
     private static String getRedirectUri(Configuration oauth2Config) {
@@ -163,7 +178,7 @@ public class IdPortenApiClient {
                 .put("description", "Delete after JavaZone 2019")
                 .put("scopes", new JsonArray().add("openid").add("profile"))
                 .put("redirect_uris", new JsonArray().add(redirectUri))
-                .put("post_logout_uris", new JsonArray().add(postLogoutUri))
+                .put("post_logout_redirect_uris", new JsonArray().add(postLogoutUri))
                 .put("frontchannel_logout_uri", postLogoutUri)
                 .put("client_type", "PUBLIC")
                 .put("token_reference", "OPAQUE")
@@ -254,7 +269,9 @@ public class IdPortenApiClient {
     }
 
     private HttpURLConnection connect(String method, String path) throws IOException {
-        HttpURLConnection conn = (HttpURLConnection) new URL(apiEndpoint, path).openConnection();
+        URL url = new URL(apiEndpoint, path);
+        logger.debug("\n{} {}\n{}", method, url, accessToken);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         accessToken.authorize(conn);
         conn.setRequestMethod(method);
         return conn;

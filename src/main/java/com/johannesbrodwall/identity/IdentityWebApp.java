@@ -41,6 +41,9 @@ public class IdentityWebApp implements ServletContextListener {
 
         context.addFilter("redirectToHttps", new EnsureHttpsFilter())
                 .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
+
+        context.addFilter("loggingContext", new LoggingContextFilter())
+                .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
     }
 
     private void addOpenIdConnectServlet(ServletContext context, String providerName) {
