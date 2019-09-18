@@ -1,5 +1,6 @@
 package com.johannesbrodwall.identity;
 
+import org.actioncontroller.servlet.ApiServlet;
 import org.logevents.extend.servlets.LogEventsServlet;
 
 import javax.servlet.DispatcherType;
@@ -47,7 +48,9 @@ public class IdentityWebApp implements ServletContextListener {
     }
 
     private void addOpenIdConnectServlet(ServletContext context, String providerName) {
-        OpenIdConnectServlet servlet = new OpenIdConnectServlet(providerName, issuerUrls.get(providerName), consoleUrls.get(providerName));
+        ApiServlet servlet = new ApiServlet(new OpenIdConnectController(providerName, issuerUrls.get(providerName), consoleUrls.get(providerName)));
+
+        //OpenIdConnectServlet servlet = new OpenIdConnectServlet(providerName, issuerUrls.get(providerName), consoleUrls.get(providerName));
         context.addServlet(providerName, servlet).addMapping("/id/" + providerName + "/*");
     }
 
