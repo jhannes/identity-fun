@@ -2,7 +2,6 @@ package com.johannesbrodwall.identity;
 
 import com.johannesbrodwall.identity.util.HttpAuthorization;
 import org.jsonbuddy.JsonObject;
-import org.jsonbuddy.parse.JsonHttpException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -10,11 +9,8 @@ import org.slf4j.MDC;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -238,13 +234,9 @@ public class OpenIdConnectServlet extends HttpServlet {
         try (OutputStream outputStream = connection.getOutputStream()) {
             outputStream.write(payload.getBytes());
         }
-        JsonHttpException.verifyResponseCode(connection);
-
-        String response = toString(connection.getInputStream());
-
-        logger.debug("Token response: {}", response);
-        req.getSession().setAttribute("token_response", response);
-        JsonObject jsonObject = JsonObject.parse(response);
+        JsonObject jsonObject = JsonObject.parse(connection);
+        logger.debug("Token response: {}", jsonObject);
+        req.getSession().setAttribute("token_response", jsonObject.toJson());
         resp.setContentType("text/html");
 
         resp.getWriter().write("<!DOCTYPE html>\n"
@@ -255,7 +247,7 @@ public class OpenIdConnectServlet extends HttpServlet {
                 + "<body>"
                 + "<h2>Step 3: Process token</h2>"
                 + "<div>This was the response from " + tokenEndpoint + "</div>"
-                + "<pre>" + response + "</pre>"
+                + "<pre>" + jsonObject.toIndentedJson("  ") + "</pre>"
                 + jsonObject.stringValue("id_token")
                     .map(idToken -> "<button onclick='navigator.clipboard.writeText(\"" + idToken + "\").then(console.log)'>Copy id_token to clipboard</button>")
                     .orElse("")
@@ -286,8 +278,7 @@ public class OpenIdConnectServlet extends HttpServlet {
             logger.warn("Token was not issued by expected OpenID provider! {} != {}", issuerConfig.getIssuer(), idTokenJwt.iss());
         }
 
-        UserSession.OpenIdConnectSession session = new UserSession.OpenIdConnectSession();
-        session.setControlUrl(req.getServletPath());
+        UserSession.OpenIdConnectSession session = new UserSession.OpenIdConnectSession(providerName);
         session.setAccessToken(tokenResponse.requiredString("access_token"));
         session.setRefreshToken(tokenResponse.stringValue("refresh_token"));
         session.setIdToken(idTokenJwt);
@@ -315,7 +306,7 @@ public class OpenIdConnectServlet extends HttpServlet {
 
         UserSession session = UserSession.getFromSession(req);
         UserSession.IdProviderSession idProviderSession = session.getIdProviderSessions().stream()
-                .filter(s -> s.getControlUrl().equals(req.getServletPath()))
+                .filter(s -> s.getProviderName().equals(providerName))
                 .findAny().orElseThrow(() -> new IllegalArgumentException("Can't refresh non-existing session"));
 
         String payload = "client_id=" + clientId
@@ -375,14 +366,4 @@ public class OpenIdConnectServlet extends HttpServlet {
         return response;
     }
 
-    private String toString(InputStream inputStream) throws IOException {
-        StringBuilder responseBuffer = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            int c;
-            while ((c = reader.read()) != -1) {
-                responseBuffer.append((char) c);
-            }
-        }
-        return responseBuffer.toString();
-    }
 }
