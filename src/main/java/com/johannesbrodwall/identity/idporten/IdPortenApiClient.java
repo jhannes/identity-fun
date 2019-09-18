@@ -2,6 +2,8 @@ package com.johannesbrodwall.identity.idporten;
 
 import com.johannesbrodwall.identity.Configuration;
 import com.johannesbrodwall.identity.util.BearerToken;
+import org.actioncontroller.client.ApiClientProxy;
+import org.actioncontroller.client.HttpURLConnectionApiClient;
 import org.jsonbuddy.JsonArray;
 import org.jsonbuddy.JsonNode;
 import org.jsonbuddy.JsonObject;
@@ -142,9 +144,16 @@ public class IdPortenApiClient {
     }
 
     private JsonArray listClients(Optional<String> clientNameFilter) throws IOException {
+        IdPortenClientsApi client = ApiClientProxy.create(IdPortenClientsApi.class, new HttpURLConnectionApiClient(apiEndpoint.toString()) {
+            @Override
+            protected HttpURLConnection openConnection(URL url) throws IOException {
+                HttpURLConnection httpURLConnection = super.openConnection(url);
+                accessToken.authorize(httpURLConnection);
+                return httpURLConnection;
+            }
+        });
         JsonArray clients = new JsonArray();
-        HttpURLConnection connection = connect("GET", "/clients/");
-        JsonArray.parse(connection)
+        client.list(Optional.empty())
                 .objectStream()
                 .filter(o -> clientNameFilter.map(n -> o.requiredString("client_name").equals(n)).orElse(true))
                 .forEach(clients::add);
@@ -226,6 +235,7 @@ public class IdPortenApiClient {
         JsonArray postLogoutUris = clientObject.arrayValue("post_logout_redirect_uris").orElse(new JsonArray());
         System.out.println(postLogoutUris);
         if (!postLogoutUris.strings().contains(postLogoutUri)) {
+            postLogoutUris.add(postLogoutUri);
             clientObject.put("post_logout_redirect_uris", postLogoutUris);
             updateRequired = true;
         }
@@ -261,6 +271,7 @@ public class IdPortenApiClient {
     }
 
     private void write(HttpURLConnection conn, JsonNode json) throws IOException {
+        logger.debug("Payload: {}", json);
         conn.setDoOutput(true);
         conn.setRequestProperty("Content-Type", "application/json");
         try (OutputStream outputStream = conn.getOutputStream()) {
