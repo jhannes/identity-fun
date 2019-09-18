@@ -30,6 +30,11 @@ public abstract class Oauth2Servlet extends HttpServlet {
 
     private String grantType = "authorization_code";
     private String responseType = "code";
+    protected String providerName;
+
+    protected Oauth2Servlet(String providerName) {
+        this.providerName = providerName;
+    }
 
     protected abstract Optional<String> getConsoleUrl();
 
@@ -209,8 +214,7 @@ public abstract class Oauth2Servlet extends HttpServlet {
         BearerToken accessToken = new BearerToken(tokenResponse.requiredString("access_token"));
         JsonObject profile = fetchUserProfile(accessToken);
 
-        UserSession.Oauth2ProviderSession idpSession = new UserSession.Oauth2ProviderSession();
-        idpSession.setControlUrl(req.getServletPath());
+        UserSession.Oauth2ProviderSession idpSession = new UserSession.Oauth2ProviderSession(providerName);
         idpSession.setIssuer(authorizationEndpoint.getAuthority());
         idpSession.setAccessToken(accessToken.toString());
         idpSession.setUserinfo(profile);

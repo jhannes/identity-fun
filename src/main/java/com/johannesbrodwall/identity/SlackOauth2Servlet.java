@@ -14,6 +14,10 @@ public class SlackOauth2Servlet extends Oauth2Servlet {
 
     private static Logger logger = LoggerFactory.getLogger(SlackOauth2Servlet.class);
 
+    public SlackOauth2Servlet(String providerName) {
+        super(providerName);
+    }
+
     @Override
     protected Optional<String> getConsoleUrl() {
         return Optional.of("https://api.slack.com/apps");
@@ -24,7 +28,7 @@ public class SlackOauth2Servlet extends Oauth2Servlet {
         Configuration configuration = new Configuration(new File("oauth2-providers.properties"));
         return new Oauth2Configuration(
                 new SlackIssuerConfig(configuration),
-                new Oauth2ClientConfiguration("slack", configuration)
+                new Oauth2ClientConfiguration(providerName, configuration)
         );
     }
 

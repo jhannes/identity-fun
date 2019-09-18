@@ -33,13 +33,11 @@ public class UserSession {
         idProviderSessions.add(session);
     }
 
-    public void removeSession(String servletPath) {
-        idProviderSessions.removeIf(idProviderSession -> idProviderSession.getControlUrl().equals(servletPath));
+    public void removeSession(String providerName) {
+        idProviderSessions.removeIf(idProviderSession -> idProviderSession.getProviderName().equals(providerName));
     }
 
     public interface IdProviderSession {
-
-        String getControlUrl();
 
         String getIssuer();
 
@@ -50,6 +48,8 @@ public class UserSession {
         String getRefreshToken();
 
         JsonObject getUserinfo();
+
+        String getProviderName();
     }
 
     public static class OpenIdConnectSession implements IdProviderSession {
@@ -58,9 +58,15 @@ public class UserSession {
         private JsonObject userinfo;
         private Optional<String> refreshToken;
         private Optional<URL> endSessionEndpoint;
+        private String providerName;
 
-        public void setControlUrl(String controlUrl) {
-            this.controlUrl = controlUrl;
+        public OpenIdConnectSession(String providerName) {
+            this.providerName = providerName;
+        }
+
+        @Override
+        public String getProviderName() {
+            return providerName;
         }
 
         public void setAccessToken(BearerToken accessToken) {
@@ -80,11 +86,6 @@ public class UserSession {
         }
 
         private JwtToken idToken;
-
-        @Override
-        public String getControlUrl() {
-            return controlUrl;
-        }
 
         @Override
         public String getIssuer() {
@@ -129,18 +130,18 @@ public class UserSession {
     }
 
     public static class Oauth2ProviderSession implements IdProviderSession {
-        private String controlUrl;
         private BearerToken accessToken;
         private String issuer;
         private JsonObject userinfo;
+        private final String providerName;
 
-        @Override
-        public String getControlUrl() {
-            return controlUrl;
+        public Oauth2ProviderSession(String providerName) {
+            this.providerName = providerName;
         }
 
-        public void setControlUrl(String controlUrl) {
-            this.controlUrl = controlUrl;
+        @Override
+        public String getProviderName() {
+            return providerName;
         }
 
         @Override

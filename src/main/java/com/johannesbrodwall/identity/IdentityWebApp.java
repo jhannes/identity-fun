@@ -34,7 +34,7 @@ public class IdentityWebApp implements ServletContextListener {
         addOpenIdConnectServlet(context, "mssingle");
         addOpenIdConnectServlet(context, "idporten");
 
-        context.addServlet("slack", new SlackOauth2Servlet()).addMapping("/id/slack/*");
+        context.addServlet("slack", new SlackOauth2Servlet("slack")).addMapping("/id/slack/*");
 
         context.addServlet("user", new UserServlet()).addMapping("/user");
         context.addServlet("config", new ConfigurationServlet()).addMapping("/config/*");
