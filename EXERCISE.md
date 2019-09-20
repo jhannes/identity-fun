@@ -133,10 +133,10 @@ To understand where the URLs and scopes come from, you can see the [Discovery do
    * `export CLIENT_ID=<value from Difi>`
    * `echo "https://oidc-ver1.difi.no/idporten-oidc-provider/authorize?scope=profile+openid&response_type=code&redirect_uri=$REDIRECT_URI&client_id=$CLIENT_ID"`
    * Open the resulting URL in a browser
-3. Log on with MinID, test users always have the password "password01" and one time code "12345". Here are some example test users:
-   * 48099902453
-   * 48106400663
-   * 48126800293
+3. Log on with BankID, test users always have the one-time password "otp" and password "qwer1234". Here are some example test users:
+   * 24079419008
+   * 24079418990
+   * 24079420596
 4. *Don't panic*: Complete the login sequence in the browser. You will be redirected to `http://localhost:8080` _where you probably will get a 404 or other error_. That's fine!
 5. Copy the `code` query parameter from your browser. You need to do execute an HTTP POST request to Difi, for example using cUrl:
    * `export REDIRECT_URI=http://localhost:8080/idporten/oauth2callback` # Or your own value
