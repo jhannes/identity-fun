@@ -128,10 +128,10 @@ To understand where the URLs and scopes come from, you can see the [Discovery do
 ### ID-porten
 
 1. Request a test client_id and client_secret from Difi for your required `redirect_uri`, or ask the workshop instructor for a `client_id` and `client_secret`. This example uses `http://localhost:8080/idporten/oauth2callback` as the `redirect_uri`. If you have an organization certificate that's registered with Difi, you can [issue clients](https://difi.github.io/idporten-oidc-dokumentasjon/oidc_api_admin.html) yourself.
-2. Edit and paste the following URL into your web browser: `https://oidc-ver1.difi.no/idporten-oidc-provider/authorize?scope=profile+openid&response_type=code&redirect_uri=http://localhost:8080/idporten/oauth2callback&client_id=:client_id` (replace redirect_uri and client_id with your own values). Using _Bash_ you can do the following:
+2. Edit and paste the following URL into your web browser: `https://oidc-ver2.difi.no/idporten-oidc-provider/authorize?scope=profile+openid&response_type=code&redirect_uri=http://localhost:8080/idporten/oauth2callback&client_id=:client_id` (replace redirect_uri and client_id with your own values). Using _Bash_ you can do the following:
    * `export REDIRECT_URI=http://localhost:8080/idporten/oauth2callback` # Or your own value
    * `export CLIENT_ID=<value from Difi>`
-   * `echo "https://oidc-ver1.difi.no/idporten-oidc-provider/authorize?scope=profile+openid&response_type=code&redirect_uri=$REDIRECT_URI&client_id=$CLIENT_ID"`
+   * `echo "https://oidc-ver2.difi.no/idporten-oidc-provider/authorize?scope=profile+openid&response_type=code&redirect_uri=$REDIRECT_URI&client_id=$CLIENT_ID"`
    * Open the resulting URL in a browser
 3. Log on with BankID, test users always have the one-time password "otp" and password "qwer1234". Here are some example test users:
    * 24079419008
@@ -143,7 +143,7 @@ To understand where the URLs and scopes come from, you can see the [Discovery do
    * `export CLIENT_ID=<value from Difi>`
    * `export CLIENT_SECRET=<value from Difi>`
    * `export CODE=<value from browser query parameter>`
-   * `TOKEN_RESPONSE=$(curl -X POST --data-urlencode "grant_type=authorization_code" --data-urlencode "client_id=$CLIENT_ID" --data-urlencode client_secret=$CLIENT_SECRET --data-urlencode "code=$CODE" --data-urlencode "redirect_uri=$REDIRECT_URI" https://oidc-ver1.difi.no/idporten-oidc-provider/token)`
+   * `TOKEN_RESPONSE=$(curl -X POST --data-urlencode "grant_type=authorization_code" --data-urlencode "client_id=$CLIENT_ID" --data-urlencode client_secret=$CLIENT_SECRET --data-urlencode "code=$CODE" --data-urlencode "redirect_uri=$REDIRECT_URI" https://oidc-ver2.difi.no/idporten-oidc-provider/token)`
    * `echo $TOKEN_RESPONSE`
 6. The token response contains an `id_token`. You can copy and paste this into [https://jwt.io](https://jwt.io)
 7. Alternatively, you can parse the id_token with shell commands (requires [jq](https://stedolan.github.io/jq/) the be installed):
@@ -158,7 +158,7 @@ Here is an example JWT:
 eyJraWQiOiJtcVQ1QTNMT1NJSGJwS3JzY2IzRUhHcnItV0lGUmZMZGFxWl81SjlHUjlzIiwiYWxnIjoiUlMyNTYifQ.eyJhdF9oYXNoIjoidzdHUWxneERGYjRnamdyRTZoQ0MzUSIsInN1YiI6ImhfOGxpNi01bmZ4V09nWVU5VExqTTl3MU5Db2I4MjRhcWZyRGRQVVE2UVE9IiwiYW1yIjpbIk1pbmlkLVBJTiJdLCJpc3MiOiJodHRwczpcL1wvb2lkYy12ZXIxLmRpZmkubm9cL2lkcG9ydGVuLW9pZGMtcHJvdmlkZXJcLyIsInBpZCI6IjQ4MTI2ODAwMjkzIiwibG9jYWxlIjoibmIiLCJzaWQiOiJuREVSRHF0Um5xMExDV1RmZjZrTF9nQXZiNjZEbjJLQl9YejU4X1ZGOVdVPSIsImF1ZCI6Im9pZGNfc29wcmFfc3RlcmlhIiwiYWNyIjoiTGV2ZWwzIiwiYXV0aF90aW1lIjoxNTQyODMzMzI5LCJleHAiOjE1NDI4MzM0NzYsImlhdCI6MTU0MjgzMzM1NiwianRpIjoidEF1V29YaF9iSS1uaXZvQXV6Y1hPU0FOWkM1eGplRXo0eHZiVldyUUVTQT0ifQ.GD_RM1v4doIuuRQXEV3j9R6sFkcfFtP5-afHfBwL81dV14fRU1XRPGRgc8QDiNO5xlVbc3fDjyfzTm0tfQe9XpLgXOQFBCWbldpVPoZnHMNk8i99hTdPY__7q_LZQVHXTWNZy_DWU-is6oRYR5YN6EeUEWya23YCrmYhlpVpD8JQNxPlIf-POD_AKOIBfBqOp7kv9zceL93FOzSvy1GvId7P5MZJ0h2B_jiszqaTyvXtCMv_pDSybCujUiWNFGuTLRb6DUqjgjVg-fqRpraWkIp65Uct9EZnkSIKsaCWJoCYgDhXyrFPmDHAOMqZ6F_w4cLMrPVHNsbVY1S6UekuJw
 ```
 
-To understand where the URLs and scopes come from, you can see the [Discovery document](https://oidc-ver1.difi.no/idporten-oidc-provider/.well-known/openid-configuration), which contains the `authorization_endpoint`, `token_endpoint`, `scopes_supported` and more.
+To understand where the URLs and scopes come from, you can see the [Discovery document](https://oidc-ver2.difi.no/idporten-oidc-provider/.well-known/openid-configuration), which contains the `authorization_endpoint`, `token_endpoint`, `scopes_supported` and more.
 
 ### Azure Active Directory (multi-tenant)
 
@@ -265,9 +265,9 @@ This guide assumes you are member of a Slack community already, but you don't ne
 
 *Uses Bash shell, cUrl and [jq](https://stedolan.github.io/jq/)*
 
-1. Get the `authorization_endpoint` and `token_endpoint` for your ID provider ([Google Accounts](https://accounts.google.com/.well-known/openid-configuration), [ID porten test](https://oidc-ver1.difi.no/idporten-oidc-provider/.well-known/openid-configuration), [Azure multi-tenant](https://login.microsoftonline.com/organizations/v2.0/.well-known/openid-configuration)):
+1. Get the `authorization_endpoint` and `token_endpoint` for your ID provider ([Google Accounts](https://accounts.google.com/.well-known/openid-configuration), [ID porten test](https://oidc-ver2.difi.no/idporten-oidc-provider/.well-known/openid-configuration), [Azure multi-tenant](https://login.microsoftonline.com/organizations/v2.0/.well-known/openid-configuration)):
    * Google: `export AUTHORIZATION_ENDPOINT=https://accounts.google.com/o/oauth2/v2/auth ; export TOKEN_ENDPOINT=https://oauth2.googleapis.com/token `
-   * ID-porten: `export AUTHORIZATION_ENDPOINT=https://oidc-ver1.difi.no/idporten-oidc-provider/authorize ; export TOKEN_ENDPOINT=https://oidc-ver1.difi.no/idporten-oidc-provider/token `
+   * ID-porten: `export AUTHORIZATION_ENDPOINT=https://oidc-ver2.difi.no/idporten-oidc-provider/authorize ; export TOKEN_ENDPOINT=https://oidc-ver2.difi.no/idporten-oidc-provider/token `
    * Azure multi-tenant: `export AUTHORIZATION_ENDPOINT=https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize; export TOKEN_ENDPOINT=https://login.microsoftonline.com/organizations/oauth2/v2.0/token`
 2. Setup your `response_uri` and get your `client_secret` and `client_secret` from the OpenID Connect provider ([Google API Console](), [Azure Portal](https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/RegisteredAppsPreview)):
    * `export REDIRECT_URI=https://my.example.com/oauth2callback` # Or your own value
