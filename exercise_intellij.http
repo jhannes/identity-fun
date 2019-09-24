@@ -1,23 +1,50 @@
 # IntelliJ IDEA - HTTP Client
+#
 # Only available in the 'ultimate edition' -> https://www.jetbrains.com/help/idea/http-client-in-product-code-editor.html
 
-# To install: Press F1, type "ext install" and choose 'Extensions: Install Extensions'  then search for rest-client.
-
-# Set up variables for your google OpenID Connect (oidc) client, see EXERCISE.md for details
-# Put the values in a file at the root of you IntelliJ IDEA module named 'rest-client.private.env.json'. Example file
+# In order to run the examples, you need to set up an application with google. The configuration for this application
+# should be placed in a file at the root of you IntelliJ IDEA module named 'rest-client.private.env.json'. You can use
+# `rest-client.template.env.json` as a template.
 #
+# Example file:
+#
+#{
 #  "google": {
 #    "client_id": "REPLACE",
 #    "client_secret": "REPLACE",
 #    "redirect_uri": "https://my.example.com/oauth2callback",
 #    "code": "REPLACE_LATER"
 #  }
+#}
 
-# The following request,after being updated with your client_id, should be performed manually in a web browser (ctrl+click)
-# and will stop at a request where you find the code which value you can add to the code variable in the 'rest-client.private.env.json' file (or hard code below)
-GET https://accounts.google.com/o/oauth2/v2/auth?scope=profile+email+openid&response_type=code&redirect_uri=https://my.example.com/oauth2callback&client_id=20307596131-9voj36oeqb6mm11hho5bhqfbp75scpb3.apps.googleusercontent.com
+#
+# GOOGLE
+#
 
-# Log in and find your code in the browser's url when the login flow halts at an "The site can't be reached (Chrome)" error message
+# Step 1: Set up you application with Google developer console
+
+# We will use https://my.example.com/oauth2callback as the callback URL
+
+# 1. Go to [Google API Console]
+https://console.developers.google.com/
+# 2. You will be prompted to create an application if you haven't done so before
+# 3. Under "OAuth Consent Screen" add to "Authorized domains" the value "example.com". Remember to press Save
+# 4. Under "Credentials" select "Create credentials" > "OAuth client ID" > "Web application". Enter the following values:
+#    * Name: Anything you prefer
+#    * Authorized JavaScript origins: can be left empty
+#    * Authorized redirect URI: "https://my.example.com/oauth2callback"
+# 5. Google will provide you with a *`client_id`* and *`client_secret`*. Copy these into your `rest-client.private.env.json`
+
+
+### Perform authorization request
+# Select run with the following link and select "Run with 'google' environment"
+# THIS WILL NOT IMMEDIATELY WORK - You will just get a bunch of HTML to the output pane
+# But after you have done this, you can control-click the link at the top of the output to open it in a browser
+# DON'T PANICK! After you log in, you will be redirected to an invalid page.
+# Just copy the code URL query parameter into the "code" variable in the 'rest-client.private.env.json' file
+GET https://accounts.google.com/o/oauth2/v2/auth?scope=profile+email+openid&response_type=code&redirect_uri={{redirect_uri}}&client_id={{client_id}}
+
+# Once you have entered code into 'rest-client.private.env.json', the following request will fetch the access and ID-tokens
 
 ####  Token request HTTP-style (Run with google environment)
 POST https://oauth2.googleapis.com/token HTTP/1.1
@@ -31,4 +58,83 @@ https://jwt.io/
 
 ### BTW: Google's well-known openid configuration
 GET https://accounts.google.com/.well-known/openid-configuration
+
+#
+# ID-PORTEN
+#
+
+# Step 1: Get client_id or client_secret from workshop instructor or Difi
+
+### If you have a properly authorized account, you get get most info at (ctrl-click)
+https://selvbetjening-samarbeid.difi.no/
+
+# We will use https://my.example.com/oauth2callback as the callback URL
+
+### Perform authorization request
+# Select run with the following link and select "Run with 'idporten' environment"
+# THIS WILL NOT IMMEDIATELY WORK - You will just get a bunch of HTML to the output pane
+# But after you have done this, you can control-click the link at the top of the output to open it in a browser
+# Log in with a test-user (e.g. BankID `24079418990`, one-time password `otp`, password `qwert1234`)
+# DON'T PANICK! After you log in, you will be redirected to an invalid page.
+# Just copy the code URL query parameter into the "code" variable in the 'rest-client.private.env.json' file
+https://oidc-ver2.difi.no/idporten-oidc-provider/authorize?scope=profile+openid&response_type=code&redirect_uri={{redirect_uri}}&client_id={{client_id}}
+
+# Once you have entered code into 'rest-client.private.env.json', the following request will fetch the access and ID-tokens
+
+####  Token request HTTP-style (Run with google environment)
+POST https://oidc-ver2.difi.no/idporten-oidc-provider/token HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code&client_id={{client_id}}&client_secret={{client_secret}}&code={{code}}&redirect_uri={{redirect_uri}}
+
+#### Token response will contain your id_token that can be inspected at https://jwt.io/ if you paste the value into the 'encoded' section
+# Ctrl + click to open in browser:
+https://jwt.io/
+
+### Idporten well-known openid configuration
+GET https://oidc-ver2.difi.no/idporten-oidc-provider/.well-known/openid-configuration
+
+#
+# Azure
+#
+
+# Step 1: Get client_id or client_secret from portal.azure.com
+
+# We will use https://my.example.com/oauth2callback as the callback URL
+
+### 1. Log into Azure Portal (ctrl-click)
+https://portal.azure.com/
+
+### 2. Create a new application registration (copy paste into browser address bar)
+https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/RegisteredAppsPreview
+
+# Under App registrations, create a New registration
+# Make sure that under *Supported Account Types* you select "Accounts in any organizational directory" (this is what is referred to as "multi-tenant").
+# Enter your `redirect_uri` (e.g. `https://my.example.com/oauth2callback`).
+# Under Overview, find you "Application (client) ID" and enter this into `rest-client.private.env.json` under "azure" > "client_id"
+# Under "Certificates and secrets", create a new secret and enter this into `rest-client.private.env.json` under "azure" > "client_id"
+# NB: THE SECRET MUST BE URL-ENCODED BEFORE YOU PLACE IT IN `rest-client.private.env.json`
+
+### Perform authorization request
+# Select run with the following link and select "Run with 'azure' environment"
+# THIS WILL NOT IMMEDIATELY WORK - You will just get a bunch of HTML to the output pane
+# But after you have done this, you can control-click the link at the top of the output to open it in a browser
+# DON'T PANICK! After you log in, you will be redirected to an invalid page.
+# Just copy the code URL query parameter into the "code" variable in the 'rest-client.private.env.json' file
+https://login.microsoftonline.com/common/oauth2/authorize?scope=profile+openid+email&response_type=code&redirect_uri={{redirect_uri}}&client_id={{client_id}}
+
+# Once you have entered code into 'rest-client.private.env.json', the following request will fetch the access and ID-tokens
+
+####  Token request HTTP-style (Run with google environment)
+POST https://login.microsoftonline.com/common/oauth2/v2.0/token HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code&client_id={{client_id}}&client_secret={{client_secret}}&code={{code}}&redirect_uri={{redirect_uri}}
+
+#### Token response will contain your id_token that can be inspected at https://jwt.io/ if you paste the value into the 'encoded' section
+# Ctrl + click to open in browser:
+https://jwt.io/
+
+### Azure well-known openid configuration
+GET https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration
 

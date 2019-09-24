@@ -4,3 +4,4 @@ target/
 /*.properties
 *.p12
 logs/
+*.private.*

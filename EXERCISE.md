@@ -108,7 +108,7 @@ In order to follow this tutorial, you need a computer with a Bash shell and cUrl
    * `export CLIENT_ID=<value from Google API Console>`
    * `export CLIENT_SECRET=<value from Google API Console>`
    * `export CODE=<value from browser query parameter>`
-   * `TOKEN_RESPONSE=$(curl -X POST --data-urlencode "grant_type=authorization_code" --data-urlencode "client_id=$CLIENT_ID" --data-urlencode client_secret=$CLIENT_SECRET --data-urlencode "code=$CODE" --data-urlencode "redirect_uri=$REDIRECT_URI" https://oauth2.googleapis.com/token)`
+   * `TOKEN_RESPONSE=$(curl -X POST --data-urlencode "grant_type=authorization_code" --data-urlencode "client_id=$CLIENT_ID" --data-urlencode client_secret=$CLIENT_SECRET --data "code=$CODE" --data-urlencode "redirect_uri=$REDIRECT_URI" https://oauth2.googleapis.com/token)`
    * `echo $TOKEN_RESPONSE`
 9. The token response contains an `id_token`. You can copy and paste this into [https://jwt.io](https://jwt.io)
 10. Alternatively, you can parse the id_token with shell commands (requires [jq](https://stedolan.github.io/jq/) the be installed):
