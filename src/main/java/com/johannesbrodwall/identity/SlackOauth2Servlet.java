@@ -36,9 +36,8 @@ public class SlackOauth2Servlet extends Oauth2Servlet {
     protected JsonObject fetchUserProfile(BearerToken accessToken) throws IOException {
         URL slackApiUrl = new URL("https://slack.com/api/");
 
-        URL userProfileEndpoint = null;
-        logger.debug("Fetching user info from : {}", userProfileEndpoint);
-        JsonObject profile = jsonParserParseToObject(userProfileEndpoint, accessToken).requiredObject("profile");
+        logger.debug("Fetching user info from : {}", new URL(slackApiUrl, "users.profile.get"));
+        JsonObject profile = jsonParserParseToObject(new URL(slackApiUrl, "users.profile.get"), accessToken).requiredObject("profile");
         logger.debug("Fetching user conversations from : {}", new URL(slackApiUrl,"conversations.list?types=private_channel,public_channel"));
         JsonObject conversations = jsonParserParseToObject(
                 new URL(slackApiUrl,"conversations.list?types=private_channel,public_channel"),
