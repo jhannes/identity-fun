@@ -57,6 +57,6 @@ public class CertificateCache {
     }
 
     private static JsonObject fetchOpenidConfiguration(String iss) throws IOException {
-        return JsonObject.parse(new URL(iss + "/.well-known/openid-configuration"));
+        return JsonObject.parse(new URL(iss + ".well-known/openid-configuration"));
     }
 }
