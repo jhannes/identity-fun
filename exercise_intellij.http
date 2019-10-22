@@ -135,6 +135,9 @@ grant_type=authorization_code&client_id={{client_id}}&client_secret={{client_sec
 # Ctrl + click to open in browser:
 https://jwt.io/
 
+# Notice that the `tid` (tenant ID) and `iss` (issuer) claims in the ID token tells you which organization the user was
+# authorized for. This is extremely useful when you create applications that are to be used by several organizations.
+
 ### Azure well-known openid configuration
 GET https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration
 
