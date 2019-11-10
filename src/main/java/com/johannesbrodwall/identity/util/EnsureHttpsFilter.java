@@ -1,4 +1,4 @@
-package com.johannesbrodwall.identity;
+package com.johannesbrodwall.identity.util;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;

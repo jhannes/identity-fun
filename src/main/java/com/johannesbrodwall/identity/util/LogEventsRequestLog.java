@@ -1,4 +1,4 @@
-package com.johannesbrodwall.identity;
+package com.johannesbrodwall.identity.util;
 
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.RequestLog;

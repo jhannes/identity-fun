@@ -1,5 +1,7 @@
 package com.johannesbrodwall.identity;
 
+import com.johannesbrodwall.identity.util.EnsureHttpsFilter;
+import com.johannesbrodwall.identity.util.LoggingContextFilter;
 import org.logevents.extend.servlets.LogEventsServlet;
 
 import javax.servlet.DispatcherType;

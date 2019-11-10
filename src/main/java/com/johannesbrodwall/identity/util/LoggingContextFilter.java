@@ -1,4 +1,4 @@
-package com.johannesbrodwall.identity;
+package com.johannesbrodwall.identity.util;
 
 import org.slf4j.MDC;
 
@@ -14,7 +14,7 @@ import java.util.Optional;
 
 public class LoggingContextFilter implements Filter {
     @Override
-    public void init(FilterConfig filterConfig) throws ServletException {
+    public void init(FilterConfig filterConfig) {
 
     }
 

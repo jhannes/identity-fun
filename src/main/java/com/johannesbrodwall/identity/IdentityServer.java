@@ -1,5 +1,6 @@
 package com.johannesbrodwall.identity;
 
+import com.johannesbrodwall.identity.util.LogEventsRequestLog;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.util.resource.Resource;
@@ -28,7 +29,7 @@ public class IdentityServer {
         logger.warn("Started {}", server.getURI());
     }
 
-    private void setupServer() throws IOException {
+    private void setupServer() {
         server.setRequestLog(new LogEventsRequestLog());
         server.addConnector(createConnector());
         server.setHandler(createWebAppContext());
@@ -43,7 +44,7 @@ public class IdentityServer {
         return connector;
     }
 
-    private WebAppContext createWebAppContext() throws IOException {
+    private WebAppContext createWebAppContext() {
         WebAppContext webAppContext = new WebAppContext();
         webAppContext.setContextPath("/");
 
