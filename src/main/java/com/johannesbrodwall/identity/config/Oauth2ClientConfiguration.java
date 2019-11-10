@@ -1,4 +1,4 @@
-package com.johannesbrodwall.identity;
+package com.johannesbrodwall.identity.config;
 
 public class Oauth2ClientConfiguration {
     private String clientId;

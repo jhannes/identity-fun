@@ -1,17 +1,17 @@
 package com.johannesbrodwall.identity;
 
+import com.johannesbrodwall.identity.config.Configuration;
+import com.johannesbrodwall.identity.config.Oauth2ConfigurationException;
+import com.johannesbrodwall.identity.config.OpenidConfiguration;
 import org.jsonbuddy.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
-import java.util.Optional;
-import java.util.Properties;
 
 public class ConfigurationServlet extends HttpServlet {
     private static Logger logger = LoggerFactory.getLogger(Configuration.class);

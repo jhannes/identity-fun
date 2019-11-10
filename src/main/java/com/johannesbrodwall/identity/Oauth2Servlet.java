@@ -1,5 +1,7 @@
 package com.johannesbrodwall.identity;
 
+import com.johannesbrodwall.identity.config.Oauth2Configuration;
+import com.johannesbrodwall.identity.config.Oauth2ConfigurationException;
 import com.johannesbrodwall.identity.util.BearerToken;
 import com.johannesbrodwall.identity.util.HttpAuthorization;
 import org.jsonbuddy.JsonObject;

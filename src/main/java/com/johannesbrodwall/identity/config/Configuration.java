@@ -1,4 +1,4 @@
-package com.johannesbrodwall.identity;
+package com.johannesbrodwall.identity.config;
 
 import java.io.File;
 import java.io.FileNotFoundException;

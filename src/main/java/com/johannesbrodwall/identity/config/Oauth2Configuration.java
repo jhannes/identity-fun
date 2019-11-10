@@ -1,4 +1,4 @@
-package com.johannesbrodwall.identity;
+package com.johannesbrodwall.identity.config;
 
 import java.net.URL;
 import java.util.Optional;

@@ -1,6 +1,6 @@
 package com.johannesbrodwall.identity.idporten;
 
-import com.johannesbrodwall.identity.Configuration;
+import com.johannesbrodwall.identity.config.Configuration;
 import com.johannesbrodwall.identity.util.BearerToken;
 import org.jsonbuddy.JsonArray;
 import org.jsonbuddy.JsonNode;

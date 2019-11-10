@@ -1,5 +1,10 @@
 package com.johannesbrodwall.identity;
 
+import com.johannesbrodwall.identity.config.Configuration;
+import com.johannesbrodwall.identity.config.Oauth2ClientConfiguration;
+import com.johannesbrodwall.identity.config.Oauth2Configuration;
+import com.johannesbrodwall.identity.config.Oauth2ConfigurationException;
+import com.johannesbrodwall.identity.config.OpenidConfiguration;
 import com.johannesbrodwall.identity.util.HttpAuthorization;
 import org.jsonbuddy.JsonObject;
 import org.slf4j.Logger;

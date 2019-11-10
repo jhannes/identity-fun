@@ -1,5 +1,9 @@
 package com.johannesbrodwall.identity;
 
+import com.johannesbrodwall.identity.config.Configuration;
+import com.johannesbrodwall.identity.config.Oauth2ClientConfiguration;
+import com.johannesbrodwall.identity.config.Oauth2Configuration;
+import com.johannesbrodwall.identity.config.Oauth2IssuerConfiguration;
 import com.johannesbrodwall.identity.util.BearerToken;
 import org.jsonbuddy.JsonObject;
 import org.slf4j.Logger;
