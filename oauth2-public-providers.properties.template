@@ -1,0 +1,26 @@
+google.title=Login with Google
+google.client_id=
+
+azure.title=Login with Microsoft AD
+azure.client_id=
+
+mssingle.title=Login with Organization AD
+mssingle.client_id=6bf216db-df12-46c1-96dc-e1f21ca0bb7c
+mssingle.issuer_uri=https://login.microsoftonline.com/b812824c-97a9-45ce-b01c-6e929d6b7852
+
+idporten.title=Login with ID-porten
+idporten.issuer_uri=https://oidc-ver2.difi.no/idporten-oidc-provider
+idporten.client_id=
+#idporten.client_secret=
+
+slack.client_id=
+slack.client_secret=
+slack.redirect_uri=http://localhost:8080/id/slack/oauth2callback
+slack.authorization_endpoint=
+
+
+# Should be on the form https://<slack team>.slack.com/oauth/authorize
+slack.authorization_endpoint=
+slack.client_id=
+slack.client_secret=
+

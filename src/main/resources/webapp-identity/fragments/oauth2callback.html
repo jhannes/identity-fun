@@ -21,7 +21,7 @@
         <div class="status"></div>
 
         <h3>id_token decoded</h3>
-        <pre class="idToken"></pre>
+        <pre id="idToken" class="idToken"></pre>
 
         <button onclick="verifyToken()">
             Verify token
@@ -95,6 +95,25 @@ function receiveCode() {
     details.querySelector("button").addEventListener("click", () => fetchToken(idProviderConfig.token_endpoint, payload));
 
     details.style.display = "block";
+}
+
+async function fetchToken(tokenEndpoint, payload) {
+    const response = fetch(tokenEndpoint, {
+        method: "POST",
+        headers: {
+            "content-type": "application/x-www-urlencoded"
+        },
+        body: payload
+    });
+    if (!response.ok) {
+        console.log(response);
+        alert("Call failed: " + response.statusText);
+    } else {
+        const text = await response.text();
+
+        document.getElementById("detailsToken").style.display = "block";
+        document.getElementById("idToken").innerText = text;
+    }
 }
 
 async function verifyToken() {

@@ -336,7 +336,7 @@ public class OpenIdConnectServlet extends HttpServlet {
         JwtToken idTokenJwt = new JwtToken(req.getParameter("id_token"), false);
         try {
             idTokenJwt.safeVerifySignature();
-        } catch (Exception e) {
+        } catch (JwtTokenValidationException e) {
             resp.getWriter().println("Signature failed: " + e);
             return;
         }

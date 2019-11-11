@@ -5,6 +5,7 @@ import org.jsonbuddy.parse.JsonParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.Signature;
 import java.time.Instant;
@@ -18,7 +19,7 @@ public class JwtToken {
     private final JsonObject header;
     private final String[] tokenParts;
 
-    public JwtToken(String token, boolean validate) {
+    public JwtToken(String token, boolean validate) throws IOException {
         this.tokenParts = token.split("\\.");
 
         this.header = (JsonObject) JsonParser.parseFromBase64encodedString(tokenParts[0]);
@@ -30,7 +31,7 @@ public class JwtToken {
         }
     }
 
-    public void safeVerifySignature() {
+    public void safeVerifySignature() throws JwtTokenValidationException, IOException {
         safeVerifySignature(alg(), iss(), header.requiredString("kid"), tokenParts);
     }
 
@@ -75,7 +76,7 @@ public class JwtToken {
         return payload.requiredString("aud");
     }
 
-    private void safeVerifySignature(String alg, String iss, String keyId, String[] tokenValues) {
+    private void safeVerifySignature(String alg, String iss, String keyId, String[] tokenValues) throws JwtTokenValidationException, IOException {
         try {
             if (!verifySignature(alg, iss, keyId, tokenValues)) {
                 throw new JwtTokenValidationException("Failed to verify signature");
@@ -88,7 +89,7 @@ public class JwtToken {
         }
     }
 
-    private boolean verifySignature(String alg, String iss, String keyId, String[] tokenValues) throws GeneralSecurityException {
+    private boolean verifySignature(String alg, String iss, String keyId, String[] tokenValues) throws GeneralSecurityException, IOException {
         if (!alg.equals("RS256")) {
             throw new IllegalArgumentException("Illegal algorithm " + alg);
         }

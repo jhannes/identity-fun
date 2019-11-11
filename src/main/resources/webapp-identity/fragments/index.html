@@ -19,14 +19,14 @@
 
     <p>
         <select name="response_type" id="response_type">
+            <option selected="selected">code</option>
             <option>id_token</option>
             <option>token</option>
             <option>id_token token</option>
-            <option>code</option>
         </select>
     </p>
 
-    <p>
+    <p id="pkceChoice">
         <label><input name="pkce" id="pkce" type="checkbox" />PKCE</label>
     </p>
 
@@ -71,8 +71,15 @@ for (const provider in idProviderConfigurations) {
     identityProviders.appendChild(button);
 }
 
+async function sha256(text) {
+    const binaryHash = await crypto.subtle.digest("SHA-256", new TextEncoder("utf-8").encode(text));
+    return btoa(String.fromCharCode.apply(null, new Uint8Array(binaryHash)))
+        .split('=')[0]
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_');
+}
 
-function login(e) {
+async function login(e) {
     const idProviderConfig = idProviderConfigurations[e.target.dataset.provider];
 
     window.localStorage.setItem("loginProvider", e.target.dataset.provider);
@@ -92,11 +99,11 @@ function login(e) {
         client_id, redirect_uri, response_type, scope, nonce, state, response_mode
     };
 
-    if (document.getElementById("pkce").checked) {
+    if (document.getElementById("pkce").checked && response_type === "code") {
         const code_verifier = randomString(50);
         window.localStorage.setItem("code_verifier", code_verifier);
-        request.code_challenge = code_verifier;
-        request.code_challenge_method = "plain";
+        request.code_challenge = await sha256(code_verifier);
+        request.code_challenge_method = "S256";
     } else {
         window.localStorage.removeItem("code_verifier");
     }
@@ -115,6 +122,9 @@ function login(e) {
 }
 
 document.getElementById("identityProviders").addEventListener("click", e => login(e));
+document.getElementById("response_type").addEventListener("change", e => {
+    document.getElementById("pkceChoice").style.display = (e.target.value === "code") ? "block" : "none";
+});
 </script>
 </body>
 </html>

@@ -21,14 +21,10 @@ public class CertificateCache {
     private static HashMap<String, PublicKey> publicKeys = new HashMap<>();
     private static CertificateFactory certificateFactory;
 
-    public static PublicKey get(String keyId, String iss) throws GeneralSecurityException {
+    public static PublicKey get(String keyId, String iss) throws GeneralSecurityException, IOException {
         if (!publicKeys.containsKey(keyId)) {
-            try {
-                URL jwksUrl = new URL(fetchOpenidConfiguration(iss).requiredString("jwks_uri"));
-                publicKeys.put(keyId, getKey(jwksUrl, keyId));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            URL jwksUrl = new URL(fetchOpenidConfiguration(iss).requiredString("jwks_uri"));
+            publicKeys.put(keyId, getKey(jwksUrl, keyId));
         }
         return publicKeys.get(keyId);
     }
@@ -57,6 +53,7 @@ public class CertificateCache {
     }
 
     private static JsonObject fetchOpenidConfiguration(String iss) throws IOException {
-        return JsonObject.parse(new URL(iss + ".well-known/openid-configuration"));
+        String discoverySpec = iss + (iss.endsWith("/") ? "" : "/") + ".well-known/openid-configuration";
+        return JsonObject.parse(new URL(discoverySpec));
     }
 }

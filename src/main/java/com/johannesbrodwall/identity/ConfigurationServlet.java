@@ -51,7 +51,7 @@ public class ConfigurationServlet extends HttpServlet {
                 .put("title", properties.getProperty(idProvider + ".title").orElse("Login with " + idProvider))
                 .put("token_endpoint", configuration.getTokenEndpoint().toString())
                 .put("authorization_endpoint", configuration.getAuthorizationEndpoint().toString())
-                .put("client_id", properties.getProperty(idProvider + ".client_id"))
+                .put("client_id", properties.getProperty(idProvider + ".client_id").orElseThrow(() -> new Oauth2ConfigurationException("Missing " + idProvider + ".client_id")))
                 .put("scope", properties.getProperty(idProvider + ".scope").orElse("openid profile"));
     }
 }
