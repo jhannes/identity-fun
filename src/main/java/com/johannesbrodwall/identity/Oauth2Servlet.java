@@ -44,6 +44,8 @@ public abstract class Oauth2Servlet extends HttpServlet {
 
     protected abstract JsonObject fetchUserProfile(BearerToken accessToken) throws IOException;
 
+    protected abstract String getApiUrl(BearerToken accessToken) throws MalformedURLException;
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String[] pathParts = req.getPathInfo().split("/");
@@ -212,20 +214,17 @@ public abstract class Oauth2Servlet extends HttpServlet {
         JsonObject tokenResponse = JsonObject.parse((String) req.getSession().getAttribute("token_response"));
 
         BearerToken accessToken = new BearerToken(tokenResponse.requiredString("access_token"));
-        JsonObject profile = fetchUserProfile(accessToken);
 
         UserSession.Oauth2ProviderSession idpSession = new UserSession.Oauth2ProviderSession(providerName);
         idpSession.setIssuer(authorizationEndpoint.getAuthority());
         idpSession.setAccessToken(accessToken.toString());
-        idpSession.setUserinfo(profile);
+        idpSession.setUserinfo(fetchUserProfile(accessToken));
         idpSession.setApiUrl(getApiUrl(accessToken));
 
         UserSession.getFromSession(req).addSession(idpSession);
 
         resp.sendRedirect("/");
     }
-
-    protected abstract String getApiUrl(BearerToken accessToken) throws MalformedURLException;
 
     JsonObject jsonParserParseToObject(URL endpoint, HttpAuthorization authorization) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) endpoint.openConnection();

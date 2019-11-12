@@ -37,8 +37,8 @@ public class IdentityWebApp implements ServletContextListener {
         addOpenIdConnectServlet(context, "mssingle");
         addOpenIdConnectServlet(context, "idporten");
 
-        context.addServlet("slack", new SlackOauth2Servlet("slack")).addMapping("/id/slack/*");
-        context.addServlet("slack-javaBin", new SlackOauth2Servlet("slack-javaBin")).addMapping("/id/slack-javaBin/*");
+        addSlackServlet(context, "slack");
+        addSlackServlet(context, "slack-javaBin");
 
         context.addServlet("user", new UserServlet()).addMapping("/user");
         context.addServlet("config", new ConfigurationServlet()).addMapping("/config/*");
@@ -50,11 +50,16 @@ public class IdentityWebApp implements ServletContextListener {
                 .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
     }
 
-    private void addOpenIdConnectServlet(ServletContext context, String providerName) {
-        ApiServlet servlet = new ApiServlet(new OpenIdConnectController(providerName, issuerUrls.get(providerName), consoleUrls.get(providerName)));
+    private void addSlackServlet(ServletContext context, String providerName) {
+        context.addServlet(providerName, new ApiServlet(new SlackOauth2Controller(providerName)))
+                .addMapping("/id/" + providerName + "/*");
+    }
 
-        //OpenIdConnectServlet servlet = new OpenIdConnectServlet(providerName, issuerUrls.get(providerName), consoleUrls.get(providerName));
-        context.addServlet(providerName, servlet).addMapping("/id/" + providerName + "/*");
+    private void addOpenIdConnectServlet(ServletContext context, String providerName) {
+        String discoveryUrl = issuerUrls.get(providerName);
+        String consoleUrl = consoleUrls.get(providerName);
+        context.addServlet(providerName, new ApiServlet(new OpenIdConnectController(providerName, discoveryUrl, consoleUrl)))
+                .addMapping("/id/" + providerName + "/*");
     }
 
     @Override
