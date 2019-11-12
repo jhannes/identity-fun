@@ -37,7 +37,12 @@
                 <li><a href="/id/azure/authenticate?domain_hint=soprasteria.com">Request org Sopra Steria</a></li>
             </ul>
         </li>
-        <li><a href="/id/slack/authenticate">Login with Slack</a></li>
+        <li>
+            <a href="/id/slack/authenticate">Login with Slack</a>
+            <ul>
+                <li><a href="/id/slack-javaBin/authenticate">javaBin-test slack</a></li>
+            </ul>
+        </li>
         <li>
             <a href="/id/idporten/authenticate">Login with ID-porten</a>
             <ul>
@@ -96,6 +101,16 @@ function displayUser(user) {
             copyAccessTokenElement.setAttribute("onclick", "navigator.clipboard.writeText('" + session.accessToken + "').then(console.log)");
             copyAccessTokenElement.innerText = "Copy access token to clipboard";
             sessionElement.appendChild(copyAccessTokenElement);
+        }
+
+        if (session.apiUrl) {
+            const apiCallElement = document.createElement("a");
+            apiCallElement.setAttribute("href", session.apiUrl);
+            apiCallElement.setAttribute("target", "_blank");
+            apiCallElement.innerText = "Make API call";
+            const apiCallDiv = document.createElement("p");
+            apiCallDiv.appendChild(apiCallElement);
+            sessionElement.appendChild(apiCallDiv);
         }
 
         sessionsElement.appendChild(sessionElement);

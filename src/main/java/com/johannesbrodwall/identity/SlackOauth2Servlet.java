@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Optional;
 
@@ -31,9 +32,15 @@ public class SlackOauth2Servlet extends Oauth2Servlet {
     protected Oauth2Configuration getOauth2Configuration() throws IOException {
         Configuration configuration = new Configuration(new File("oauth2-providers.properties"));
         return new Oauth2Configuration(
-                new SlackIssuerConfig(configuration),
+                new SlackIssuerConfig(configuration, providerName),
                 new Oauth2ClientConfiguration(providerName, configuration)
         );
+    }
+
+    @Override
+    protected String getApiUrl(BearerToken accessToken) throws MalformedURLException {
+        URL slackApiUrl = new URL("https://slack.com/api/");
+        return new URL(slackApiUrl, "users.profile.get?token=" + accessToken.getValue()).toString();
     }
 
     @Override
@@ -53,14 +60,16 @@ public class SlackOauth2Servlet extends Oauth2Servlet {
 
     private static class SlackIssuerConfig implements Oauth2IssuerConfiguration {
         private Configuration configuration;
+        private String providerName;
 
-        public SlackIssuerConfig(Configuration configuration) {
+        public SlackIssuerConfig(Configuration configuration, String providerName) {
             this.configuration = configuration;
+            this.providerName = providerName;
         }
 
         @Override
         public URL getAuthorizationEndpoint() {
-            return toURL(configuration.getRequiredProperty("slack.authorization_endpoint"));
+            return toURL(configuration.getRequiredProperty(providerName + ".authorization_endpoint"));
         }
 
         @Override

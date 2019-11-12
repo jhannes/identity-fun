@@ -11,15 +11,19 @@ public class BearerToken implements HttpAuthorization {
 
     @Override
     public void authorize(HttpURLConnection connection) {
-        connection.setRequestProperty("Authorization", getValue());
+        connection.setRequestProperty("Authorization", getHeaderValue());
+    }
+
+    public String getHeaderValue() {
+        return "Bearer " + value;
     }
 
     public String getValue() {
-        return "Bearer " + value;
+        return value;
     }
 
     @Override
     public String toString() {
-        return "Authorization: " + getValue();
+        return "Authorization: " + getHeaderValue();
     }
 }

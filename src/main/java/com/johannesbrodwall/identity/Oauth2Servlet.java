@@ -5,7 +5,6 @@ import com.johannesbrodwall.identity.config.Oauth2ConfigurationException;
 import com.johannesbrodwall.identity.util.BearerToken;
 import com.johannesbrodwall.identity.util.HttpAuthorization;
 import org.jsonbuddy.JsonObject;
-import org.jsonbuddy.parse.JsonHttpException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -19,6 +18,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -192,17 +192,15 @@ public abstract class Oauth2Servlet extends HttpServlet {
         try (OutputStream outputStream = connection.getOutputStream()) {
             outputStream.write(payload.getBytes());
         }
-        JsonHttpException.verifyResponseCode(connection);
+        JsonObject jsonObject = JsonObject.parse(connection);
+        logger.debug("Token response: {}", jsonObject);
+        req.getSession().setAttribute("token_response", jsonObject.toJson());
 
-        String response = toString(connection.getInputStream());
-
-        logger.debug("Token response: {}", response);
-        req.getSession().setAttribute("token_response", response);
         resp.setContentType("text/html");
         resp.getWriter().write("<html>"
                 + "<h2>Step 3: Process token</h2>"
                 + "<div>This was the response from " + tokenEndpoint + "</div>"
-                + "<pre>" + response + "</pre>"
+                + "<pre>" + jsonObject.toIndentedJson("  ") + "</pre>"
                 + "<div>Normally you application will directly use the token to establish an application session</div>"
                 + "<div><a href='" + req.getServletPath() + "/session'>Create session</a></div>"
                 + "<div><a href='/'>Front page</a></div>"
@@ -220,11 +218,14 @@ public abstract class Oauth2Servlet extends HttpServlet {
         idpSession.setIssuer(authorizationEndpoint.getAuthority());
         idpSession.setAccessToken(accessToken.toString());
         idpSession.setUserinfo(profile);
+        idpSession.setApiUrl(getApiUrl(accessToken));
 
         UserSession.getFromSession(req).addSession(idpSession);
 
         resp.sendRedirect("/");
     }
+
+    protected abstract String getApiUrl(BearerToken accessToken) throws MalformedURLException;
 
     JsonObject jsonParserParseToObject(URL endpoint, HttpAuthorization authorization) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) endpoint.openConnection();

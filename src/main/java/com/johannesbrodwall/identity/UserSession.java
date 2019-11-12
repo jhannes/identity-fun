@@ -134,6 +134,7 @@ public class UserSession {
         private String issuer;
         private JsonObject userinfo;
         private final String providerName;
+        private String apiUrl;
 
         public Oauth2ProviderSession(String providerName) {
             this.providerName = providerName;
@@ -175,6 +176,14 @@ public class UserSession {
 
         public void setUserinfo(JsonObject userinfo) {
             this.userinfo = userinfo;
+        }
+
+        public void setApiUrl(String apiUrl) {
+            this.apiUrl = apiUrl;
+        }
+
+        public String getApiUrl() {
+            return apiUrl;
         }
     }
 }
