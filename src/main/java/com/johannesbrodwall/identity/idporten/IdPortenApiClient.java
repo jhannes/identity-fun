@@ -187,7 +187,9 @@ public class IdPortenApiClient {
                 .put("force_pkce", false)
                 .put("grant_types", new JsonArray().add("authorization_code"))
                 .put("token_endpoint_auth_method", "client_secret_post")
-                .put("client_uri", "");
+                .put("integration_type", "idporten")
+                .put("application_type", "web")
+                .put("client_uri", "https://ndc-identity-demo.azurewebsites.net/");
     }
 
     private JsonObject createSecret(String clientId) throws IOException {
