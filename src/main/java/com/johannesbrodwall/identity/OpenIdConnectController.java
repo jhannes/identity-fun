@@ -8,7 +8,7 @@ import com.johannesbrodwall.identity.config.OpenidConfiguration;
 import com.johannesbrodwall.identity.util.HttpAuthorization;
 import org.actioncontroller.ContentBody;
 import org.actioncontroller.ExceptionUtil;
-import org.actioncontroller.Get;
+import org.actioncontroller.GET;
 import org.actioncontroller.QueryString;
 import org.actioncontroller.RequestParam;
 import org.actioncontroller.SendRedirect;
@@ -44,7 +44,7 @@ public class OpenIdConnectController {
         this.consoleUrl = Optional.ofNullable(consoleUrl);
     }
 
-    //@Get("/authenticate")
+    //@GET("/authenticate")
     @SendRedirect
     public String authenticateWithRedirect(
             @RequestParam("domain_hint") Optional<String> domainHint,
@@ -56,7 +56,7 @@ public class OpenIdConnectController {
         return getAuthorizationUrl(domainHint, servletUrl, state);
     }
 
-    @Get("/authenticate")
+    @GET("/authenticate")
     @ContentBody(contentType = "text/html")
     public String authenticate(
             @RequestParam("domain_hint") Optional<String> domainHint,
@@ -82,7 +82,7 @@ public class OpenIdConnectController {
                 + "</div></body></html>";
     }
 
-    //@Get("/oauth2callback?code")
+    //@GET("/oauth2callback?code")
     @SendRedirect
     public String oauth2callbackWithRedirect(
             @RequestParam("code") String code,
@@ -109,7 +109,7 @@ public class OpenIdConnectController {
         return "/";
     }
 
-    @Get("/oauth2callback?code")
+    @GET("/oauth2callback?code")
     @ContentBody(contentType = "text/html")
     public String oauth2callback(
             @RequestParam("code") String code,
@@ -147,7 +147,7 @@ public class OpenIdConnectController {
                 + "</div></body></html>";
     }
 
-    @Get("/oauth2callback?error")
+    @GET("/oauth2callback?error")
     @ContentBody
     public String oauth2callback(
             @RequestParam("error") String error,
@@ -167,7 +167,7 @@ public class OpenIdConnectController {
                 + "</html>";
     }
 
-    @Get("/token")
+    @GET("/token")
     @ContentBody(contentType = "text/html")
     public String getToken(
             @ServletUrl String servletUrl,
@@ -199,7 +199,7 @@ public class OpenIdConnectController {
                 + "</html>";
     }
 
-    @Get("/session")
+    @GET("/session")
     @SendRedirect
     public String setupSession(
             @ServletUrl String servletUrl,
@@ -218,7 +218,7 @@ public class OpenIdConnectController {
         return "/";
     }
 
-    @Get("/refresh")
+    @GET("/refresh")
     public void refreshAccessToken(
             @ServletUrl String servletUrl,
             @SessionParameter(createIfMissing = true) UserSession session
@@ -250,7 +250,7 @@ public class OpenIdConnectController {
         idProviderSession.setAccessToken(jsonObject.requiredString("access_token"));
     }
 
-    @Get("/verify")
+    @GET("/verify")
     @ContentBody(contentType = "text/html")
     public String verifyIdToken(
             @ServletUrl String servletUrl,
@@ -276,7 +276,7 @@ public class OpenIdConnectController {
         return "Token valid";
     }
 
-    @Get("/logout")
+    @GET("/logout")
     public void logoutSession(
             @SessionParameter(createIfMissing = true) UserSession session
     ) {

@@ -4,7 +4,7 @@ import com.johannesbrodwall.identity.config.Oauth2Configuration;
 import com.johannesbrodwall.identity.util.BearerToken;
 import com.johannesbrodwall.identity.util.HttpAuthorization;
 import org.actioncontroller.ContentBody;
-import org.actioncontroller.Get;
+import org.actioncontroller.GET;
 import org.actioncontroller.QueryString;
 import org.actioncontroller.RequestParam;
 import org.actioncontroller.SendRedirect;
@@ -41,7 +41,7 @@ public abstract class Oauth2Controller {
         this.providerName = providerName;
     }
 
-    @Get("/authenticate")
+    @GET("/authenticate")
     @ContentBody(contentType = "text/html")
     public String authenticate(
             @RequestParam("domain_hint") Optional<String> domainHint,
@@ -67,7 +67,7 @@ public abstract class Oauth2Controller {
                 + "</div></body></html>";
     }
 
-    @Get("/oauth2callback?code")
+    @GET("/oauth2callback?code")
     @ContentBody(contentType = "text/html")
     public String oauth2callback(
             @RequestParam("code") String code,
@@ -100,7 +100,7 @@ public abstract class Oauth2Controller {
                 + "</div></body></html>";
     }
 
-    @Get("/oauth2callback?error")
+    @GET("/oauth2callback?error")
     @ContentBody
     public String oauth2callback(
             @RequestParam("error") String error,
@@ -120,7 +120,7 @@ public abstract class Oauth2Controller {
                 + "</html>";
     }
 
-    @Get("/token")
+    @GET("/token")
     @ContentBody(contentType = "text/html")
     public String getToken(
             @ServletUrl String servletUrl,
@@ -152,7 +152,7 @@ public abstract class Oauth2Controller {
                 + "</html>";
     }
 
-    @Get("/session")
+    @GET("/session")
     @SendRedirect
     public String setupSession(
             @ServletUrl String servletUrl,
