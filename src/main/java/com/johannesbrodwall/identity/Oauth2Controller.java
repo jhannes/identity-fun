@@ -48,17 +48,9 @@ public abstract class Oauth2Controller {
             @ServletUrl String servletUrl,
             @SessionParameter("state") Consumer<String> setLoginState
     ) throws IOException {
-        Oauth2Configuration config = getOauth2Configuration();
         String state = UUID.randomUUID().toString();
         setLoginState.accept(state);
-        String authenticationUrl = new URLBuilder(config.getAuthorizationEndpoint())
-                .query("client_id", config.getClientId())
-                .query("state", state)
-                .query("redirect_uri", getRedirectUri(servletUrl))
-                .query("response_type", "code")
-                .query("scope", config.getScopesString())
-                .query("domain_hint", domainHint)
-                .toString();
+        String authenticationUrl = getAuthenticationUrl(domainHint, servletUrl, state);
         return "<!DOCTYPE html>\n"
                 + "<html>"
                 + "<head>"
@@ -90,11 +82,7 @@ public abstract class Oauth2Controller {
             logger.warn("Login state DOES NOT match callback state: {} != {}", loginState, state);
         }
 
-        String payload = "client_id=" + getOauth2Configuration().getClientId()
-                + "&" + "client_secret=" + "xxxxxxx"
-                + "&" + "redirect_uri=" + getRedirectUri(servletUrl)
-                + "&" + "code=" + code
-                + "&" + "grant_type=" + "authorization_code";
+        String payload = fetchPayload(code, servletUrl, "xxxxxxx");
         URL tokenEndpoint = getOauth2Configuration().getTokenEndpoint();
         return "<!DOCTYPE html>\n"
                 + "<html>"
@@ -110,10 +98,6 @@ public abstract class Oauth2Controller {
                 + payload.replaceAll("[?&]", "<br />&nbsp;&nbsp;&nbsp;&nbsp;$0")
                 + "</code>"
                 + "</div></body></html>";
-    }
-
-    private String getRedirectUri(@ServletUrl String servletUrl) throws IOException {
-        return getOauth2Configuration().getRedirectUri(getDefaultRedirectUri(servletUrl));
     }
 
     @Get("/oauth2callback?error")
@@ -144,18 +128,9 @@ public abstract class Oauth2Controller {
             @SessionParameter("token_response") Consumer<JsonObject> setTokenResponse,
             @ServletUrl String servletPath
     ) throws IOException {
-        Oauth2Configuration config = getOauth2Configuration();
-        payload = payload.replace("xxxxxxx", URLEncoder.encode(config.getClientSecret(), StandardCharsets.UTF_8.toString()));
+        payload = payload.replace("xxxxxxx", URLEncoder.encode(getOauth2Configuration().getClientSecret(), StandardCharsets.UTF_8.toString()));
 
-        URL tokenEndpoint = config.getTokenEndpoint();
-        logger.debug("Fetching token from POST {} with payload: {}", tokenEndpoint, payload);
-        HttpURLConnection connection = (HttpURLConnection) tokenEndpoint.openConnection();
-        connection.setDoOutput(true);
-        try (OutputStream outputStream = connection.getOutputStream()) {
-            outputStream.write(payload.getBytes());
-        }
-        JsonObject jsonObject = JsonObject.parse(connection);
-        logger.debug("Token response: {}", jsonObject);
+        JsonObject jsonObject = fetchToken(payload);
         setTokenResponse.accept(jsonObject);
 
         return "<!DOCTYPE html>\n"
@@ -165,7 +140,7 @@ public abstract class Oauth2Controller {
                 + "</head>"
                 + "<body>"
                 + "<h2>Step 3: Process token</h2>"
-                + "<div>This was the response from " + tokenEndpoint + "</div>"
+                + "<div>This was the response from " + getOauth2Configuration().getTokenEndpoint() + "</div>"
                 + "<pre>" + jsonObject.toIndentedJson("  ") + "</pre>"
                 + jsonObject.stringValue("id_token")
                     .map(idToken -> "<button onclick='navigator.clipboard.writeText(\"" + idToken + "\").then(console.log)'>Copy id_token to clipboard</button>")
@@ -195,6 +170,42 @@ public abstract class Oauth2Controller {
         userSession.addSession(session);
 
         return "/";
+    }
+
+    private String getAuthenticationUrl(Optional<String> domainHint, String servletUrl, String state) throws IOException {
+        Oauth2Configuration config = getOauth2Configuration();
+        return new URLBuilder(config.getAuthorizationEndpoint())
+                .query("client_id", config.getClientId())
+                .query("state", state)
+                .query("redirect_uri", getRedirectUri(servletUrl))
+                .query("response_type", "code")
+                .query("scope", config.getScopesString())
+                .query("domain_hint", domainHint)
+                .toString();
+    }
+
+    private String fetchPayload(String code, String servletUrl, String clientSecret) throws IOException {
+        return "client_id=" + getOauth2Configuration().getClientId()
+                + "&" + "client_secret=" + clientSecret
+                + "&" + "redirect_uri=" + getRedirectUri(servletUrl)
+                + "&" + "code=" + code
+                + "&" + "grant_type=" + "authorization_code";
+    }
+
+    private JsonObject fetchToken(String payload) throws IOException {
+        logger.debug("Fetching token from POST {} with payload: {}", getOauth2Configuration().getTokenEndpoint(), payload);
+        HttpURLConnection connection = (HttpURLConnection) getOauth2Configuration().getTokenEndpoint().openConnection();
+        connection.setDoOutput(true);
+        try (OutputStream outputStream = connection.getOutputStream()) {
+            outputStream.write(payload.getBytes());
+        }
+        JsonObject jsonObject = JsonObject.parse(connection);
+        logger.debug("Token response: {}", jsonObject);
+        return jsonObject;
+    }
+
+    private String getRedirectUri(@ServletUrl String servletUrl) throws IOException {
+        return getOauth2Configuration().getRedirectUri(getDefaultRedirectUri(servletUrl));
     }
 
     private String getDefaultRedirectUri(String servletUrl) {

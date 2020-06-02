@@ -32,7 +32,7 @@ import java.util.function.Consumer;
 
 public class OpenIdConnectController {
 
-    private static Logger logger = LoggerFactory.getLogger(OpenIdConnectController.class);
+    private static final Logger logger = LoggerFactory.getLogger(OpenIdConnectController.class);
 
     private final String providerName;
     private final String discoveryUrl;
@@ -44,32 +44,16 @@ public class OpenIdConnectController {
         this.consoleUrl = Optional.ofNullable(consoleUrl);
     }
 
-
-    private Oauth2Configuration getConfiguration(String servletUrl) {
-        try {
-            Configuration configuration = new Configuration(new File("oauth2-providers.properties"));
-            return new Oauth2Configuration(
-                    getIssuerConfig(servletUrl),
-                    new Oauth2ClientConfiguration(providerName, configuration)
-            );
-        } catch (Oauth2ConfigurationException e) {
-            throw new HttpConfigurationException(providerName, consoleUrl, getDefaultRedirectUri(servletUrl), e);
-        } catch (IOException e) {
-            throw ExceptionUtil.softenException(e);
-        }
-    }
-
-    private OpenidConfiguration getIssuerConfig(String servletUrl) {
-        try {
-            Configuration configuration = new Configuration(new File("oauth2-providers.properties"));
-            String openIdIssuerUrl = Optional.ofNullable(this.discoveryUrl)
-                    .orElseGet(() -> configuration.getRequiredProperty(providerName + ".issuer_uri"));
-            return new OpenidConfiguration(openIdIssuerUrl);
-        } catch (Oauth2ConfigurationException e) {
-            throw new HttpConfigurationException(providerName, consoleUrl, getDefaultRedirectUri(servletUrl), e);
-        } catch (IOException e) {
-            throw ExceptionUtil.softenException(e);
-        }
+    //@Get("/authenticate")
+    @SendRedirect
+    public String authenticateWithRedirect(
+            @RequestParam("domain_hint") Optional<String> domainHint,
+            @ServletUrl String servletUrl,
+            @SessionParameter("state") Consumer<String> setLoginState
+    ) {
+        String state = UUID.randomUUID().toString();
+        setLoginState.accept(state);
+        return getAuthorizationUrl(domainHint, servletUrl, state);
     }
 
     @Get("/authenticate")
@@ -79,17 +63,9 @@ public class OpenIdConnectController {
             @ServletUrl String servletUrl,
             @SessionParameter("state") Consumer<String> setLoginState
     ) {
-        Oauth2Configuration config = getConfiguration(servletUrl);
         String state = UUID.randomUUID().toString();
         setLoginState.accept(state);
-        String authenticationUrl = new URLBuilder(config.getAuthorizationEndpoint())
-                .query("client_id", config.getClientId())
-                .query("state", state)
-                .query("redirect_uri", config.getRedirectUri(getDefaultRedirectUri(servletUrl)))
-                .query("response_type", "code")
-                .query("scope", config.getScopesString())
-                .query("domain_hint", domainHint)
-                .toString();
+        String authenticationUrl = getAuthorizationUrl(domainHint, servletUrl, state);
         return "<!DOCTYPE html>\n"
                 + "<html>"
                 + "<head>"
@@ -104,6 +80,33 @@ public class OpenIdConnectController {
                 + authenticationUrl.replaceAll("[?&]", "<br />&nbsp;&nbsp;&nbsp;&nbsp;$0")
                 + "</code>"
                 + "</div></body></html>";
+    }
+
+    //@Get("/oauth2callback?code")
+    @SendRedirect
+    public String oauth2callbackWithRedirect(
+            @RequestParam("code") String code,
+            @RequestParam("state") String state,
+            @ServletUrl String servletUrl,
+            @SessionParameter("state") String loginState,
+            @SessionParameter(createIfMissing = true) UserSession userSession
+    ) throws IOException {
+        if (loginState.equals(state)) {
+            logger.debug("Login state matches callback state: {}", state);
+        } else {
+            logger.warn("Login state DOES NOT match callback state: {} != {}", loginState, state);
+        }
+
+        String payload = "client_id=" + getConfiguration(servletUrl).getClientId()
+                + "&" + "client_secret=" + URLEncoder.encode(getConfiguration(servletUrl).getClientSecret(), StandardCharsets.UTF_8.toString())
+                + "&" + "redirect_uri=" + getConfiguration(servletUrl).getRedirectUri(getDefaultRedirectUri(servletUrl))
+                + "&" + "code=" + code
+                + "&" + "grant_type=" + "authorization_code";
+        JsonObject tokenResponse = fetchToken(servletUrl, payload);
+
+        userSession.addSession(createSession(tokenResponse, getIssuerConfig(servletUrl), getConfiguration(servletUrl)));
+
+        return "/";
     }
 
     @Get("/oauth2callback?code")
@@ -172,18 +175,9 @@ public class OpenIdConnectController {
             @SessionParameter("token_response") Consumer<JsonObject> setTokenResponse,
             @ServletUrl String servletPath
     ) throws IOException {
-        Oauth2Configuration config = getConfiguration(servletUrl);
-        payload = payload.replace("xxxxxxx", URLEncoder.encode(config.getClientSecret(), StandardCharsets.UTF_8.toString()));
+        payload = payload.replace("xxxxxxx", URLEncoder.encode(getConfiguration(servletUrl).getClientSecret(), StandardCharsets.UTF_8.toString()));
 
-        URL tokenEndpoint = config.getTokenEndpoint();
-        logger.debug("Fetching token from POST {} with payload: {}", tokenEndpoint, payload);
-        HttpURLConnection connection = (HttpURLConnection) tokenEndpoint.openConnection();
-        connection.setDoOutput(true);
-        try (OutputStream outputStream = connection.getOutputStream()) {
-            outputStream.write(payload.getBytes());
-        }
-        JsonObject jsonObject = JsonObject.parse(connection);
-        logger.debug("Token response: {}", jsonObject);
+        JsonObject jsonObject = fetchToken(servletUrl, payload);
         setTokenResponse.accept(jsonObject);
 
         return "<!DOCTYPE html>\n"
@@ -193,7 +187,7 @@ public class OpenIdConnectController {
                 + "</head>"
                 + "<body>"
                 + "<h2>Step 3: Process token</h2>"
-                + "<div>This was the response from " + tokenEndpoint + "</div>"
+                + "<div>This was the response from " + getConfiguration(servletUrl).getTokenEndpoint() + "</div>"
                 + "<pre>" + jsonObject.toIndentedJson("  ") + "</pre>"
                 + jsonObject.stringValue("id_token")
                     .map(idToken -> "<button onclick='navigator.clipboard.writeText(\"" + idToken + "\").then(console.log)'>Copy id_token to clipboard</button>")
@@ -214,31 +208,12 @@ public class OpenIdConnectController {
     ) throws IOException {
         OpenidConfiguration issuerConfig = getIssuerConfig(servletUrl);
         Oauth2Configuration config = getConfiguration(servletUrl);
-        String clientId = config.getClientId();
 
         logger.debug("Access token: {} expires {}",
                 tokenResponse.requiredString("access_token"),
                 tokenResponse.stringValue("expires_on").orElse(""));
 
-        String idToken = tokenResponse.requiredString("id_token");
-        logger.debug("Decoding session from JWT: {}", idToken);
-        JwtToken idTokenJwt = new JwtToken(idToken, true);
-        logger.debug("Validated token with iss={} sub={} aud={}", idTokenJwt.iss(), idTokenJwt.sub(), idTokenJwt.aud());
-        if (!clientId.equals(idTokenJwt.aud())) {
-            logger.warn("Token was not intended for us! {} != {}", clientId, idTokenJwt.aud());
-        }
-        if (!issuerConfig.getIssuer().equals(idTokenJwt.iss())) {
-            logger.warn("Token was not issued by expected OpenID provider! {} != {}", issuerConfig.getIssuer(), idTokenJwt.iss());
-        }
-
-        UserSession.OpenIdConnectSession session = new UserSession.OpenIdConnectSession(providerName);
-        session.setAccessToken(tokenResponse.requiredString("access_token"));
-        session.setRefreshToken(tokenResponse.stringValue("refresh_token"));
-        session.setIdToken(idTokenJwt);
-        session.setEndSessionEndpoint(config.getEndSessionEndpoint());
-        session.setUserinfo(jsonParserParseToObject(issuerConfig.getUserinfoEndpoint(), session.getAccessBearerToken()));
-
-        userSession.addSession(session);
+        userSession.addSession(createSession(tokenResponse, issuerConfig, config));
 
         return "/";
     }
@@ -313,6 +288,80 @@ public class OpenIdConnectController {
             issuer = issuer.replaceAll("\\{tenantid}", jwt.getPayload().requiredString("tid"));
         }
         return issuer.equals(jwt.iss());
+    }
+
+    private String getAuthorizationUrl(@RequestParam("domain_hint") Optional<String> domainHint, @ServletUrl String servletUrl, String state) {
+        Oauth2Configuration config = getConfiguration(servletUrl);
+        return new URLBuilder(config.getAuthorizationEndpoint())
+                .query("client_id", config.getClientId())
+                .query("state", state)
+                .query("redirect_uri", config.getRedirectUri(getDefaultRedirectUri(servletUrl)))
+                .query("response_type", "code")
+                .query("scope", config.getScopesString())
+                .query("domain_hint", domainHint)
+                .toString();
+    }
+
+
+    private UserSession.OpenIdConnectSession createSession(JsonObject tokenResponse, OpenidConfiguration issuerConfig, Oauth2Configuration config) throws IOException {
+        String clientId = config.getClientId();
+        String idToken = tokenResponse.requiredString("id_token");
+        logger.debug("Decoding session from JWT: {}", idToken);
+        JwtToken idTokenJwt = new JwtToken(idToken, true);
+        logger.debug("Validated token with iss={} sub={} aud={}", idTokenJwt.iss(), idTokenJwt.sub(), idTokenJwt.aud());
+        if (!clientId.equals(idTokenJwt.aud())) {
+            logger.warn("Token was not intended for us! {} != {}", clientId, idTokenJwt.aud());
+        }
+        if (!issuerConfig.getIssuer().equals(idTokenJwt.iss())) {
+            logger.warn("Token was not issued by expected OpenID provider! {} != {}", issuerConfig.getIssuer(), idTokenJwt.iss());
+        }
+
+        UserSession.OpenIdConnectSession session = new UserSession.OpenIdConnectSession(providerName);
+        session.setAccessToken(tokenResponse.requiredString("access_token"));
+        session.setRefreshToken(tokenResponse.stringValue("refresh_token"));
+        session.setIdToken(idTokenJwt);
+        session.setEndSessionEndpoint(config.getEndSessionEndpoint());
+        session.setUserinfo(jsonParserParseToObject(issuerConfig.getUserinfoEndpoint(), session.getAccessBearerToken()));
+        return session;
+    }
+
+    private JsonObject fetchToken(String servletUrl, String payload) throws IOException {
+        logger.debug("Fetching token from POST {} with payload: {}", getConfiguration(servletUrl).getTokenEndpoint(), payload);
+        HttpURLConnection connection = (HttpURLConnection) getConfiguration(servletUrl).getTokenEndpoint().openConnection();
+        connection.setDoOutput(true);
+        try (OutputStream outputStream = connection.getOutputStream()) {
+            outputStream.write(payload.getBytes());
+        }
+        JsonObject jsonObject = JsonObject.parse(connection);
+        logger.debug("Token response: {}", jsonObject);
+        return jsonObject;
+    }
+
+    private Oauth2Configuration getConfiguration(String servletUrl) {
+        try {
+            Configuration configuration = new Configuration(new File("oauth2-providers.properties"));
+            return new Oauth2Configuration(
+                    getIssuerConfig(servletUrl),
+                    new Oauth2ClientConfiguration(providerName, configuration)
+            );
+        } catch (Oauth2ConfigurationException e) {
+            throw new HttpConfigurationException(providerName, consoleUrl, getDefaultRedirectUri(servletUrl), e);
+        } catch (IOException e) {
+            throw ExceptionUtil.softenException(e);
+        }
+    }
+
+    private OpenidConfiguration getIssuerConfig(String servletUrl) {
+        try {
+            Configuration configuration = new Configuration(new File("oauth2-providers.properties"));
+            String openIdIssuerUrl = Optional.ofNullable(this.discoveryUrl)
+                    .orElseGet(() -> configuration.getRequiredProperty(providerName + ".issuer_uri"));
+            return new OpenidConfiguration(openIdIssuerUrl);
+        } catch (Oauth2ConfigurationException e) {
+            throw new HttpConfigurationException(providerName, consoleUrl, getDefaultRedirectUri(servletUrl), e);
+        } catch (IOException e) {
+            throw ExceptionUtil.softenException(e);
+        }
     }
 
     private JsonObject jsonParserParseToObject(URL endpoint, HttpAuthorization authorization) throws IOException {

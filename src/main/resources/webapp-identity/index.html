@@ -16,12 +16,40 @@
             border: 1px solid gray;
             display: inline-block;
         }
-
+        body {
+            font-family: Tahoma,serif;
+            display: grid;
+            grid-template-rows: auto 1fr 100px;
+            margin: 0;
+            height: 100vh;
+        }
+        header, main {
+            margin-left: 1rem;
+        }
+        main {
+            overflow-y: scroll;
+            overflow-x: hidden;
+        }
+        footer,header {
+            display: flex;
+            justify-content: space-between;
+            align-content: center;
+            flex-direction: row;
+        }
+        footer img {
+            height: 75px;
+        }
     </style>
 </head>
 <body>
-    <h1>A demonstration of Oauth2 and OpenID Connect</h1>
-    <p>Find the code at <a href="https://github.com/jhannes/identity-fun">Github</a></p>
+    <header>
+        <div>
+            <h1>Demonstration of Oauth2 and OpenID Connect</h1>
+            <p>Find the code at <a href="https://github.com/jhannes/identity-fun">https://github.com/jhannes/identity-fun</a></p>
+        </div>
+    </header>
+    <main>
+
 
     <div id="sessions"></div>
 
@@ -53,71 +81,79 @@
     </ul>
 
     <pre id="userInfo"></pre>
-
+    </main>
+    <footer>
+        <div>
+            <img src="sopra-steria-logo.png" alt="Sopra Steria logo" />
+        </div>
+        <div>
+            <img src="7.png" alt="Kaepernick" />
+        </div>
+    </footer>
+</body>
 <script>
-function displayUser(user) {
-    console.log(user);
-    document.getElementById("userInfo").innerHTML = JSON.stringify(user, null, 2);
+    function displayUser(user) {
+        console.log(user);
+        document.getElementById("userInfo").innerHTML = JSON.stringify(user, null, 2);
 
-    const sessionsElement = document.getElementById("sessions");
+        const sessionsElement = document.getElementById("sessions");
 
-    for (const session of user.idProviderSessions) {
-        const username = session.userinfo.upn || session.userinfo.email || session.userinfo.pid || session.userinfo.name;
-        const picture = session.userinfo.picture || session.userinfo.image_72 || session.userinfo.image;
-        console.log({picture});
+        for (const session of user.idProviderSessions) {
+            const username = session.userinfo.upn || session.userinfo.email || session.userinfo.pid || session.userinfo.name;
+            const picture = session.userinfo.picture || session.userinfo.image_72 || session.userinfo.image;
+            console.log({picture});
 
-        const sessionElement = document.createElement("div");
+            const sessionElement = document.createElement("div");
 
-        if (picture) {
-            const pictureElement = document.createElement("p");
-            pictureElement.innerHTML = "<img src='" + picture + "' width='72px' />";
-            sessionElement.appendChild(pictureElement);
+            if (picture) {
+                const pictureElement = document.createElement("p");
+                pictureElement.innerHTML = "<img src='" + picture + "' width='72px' />";
+                sessionElement.appendChild(pictureElement);
+            }
+
+            const usernameElement = document.createElement("p");
+            usernameElement.innerText = username;
+            sessionElement.appendChild(usernameElement);
+
+            if (session.refreshToken) {
+                const refreshElement = document.createElement("p");
+                const refreshLink = document.createElement("a");
+                refreshLink.setAttribute("href", session.controlUrl + "/refresh");
+                refreshLink.innerHTML = "Refresh session";
+                refreshElement.appendChild(refreshLink);
+                sessionElement.appendChild(refreshElement);
+            }
+
+            if (session.endSessionEndpoint) {
+                const endSessionElement = document.createElement("p");
+                const endSessionLink = document.createElement("a");
+                endSessionLink.setAttribute("href", session.endSessionEndpoint);
+                endSessionLink.innerHTML = "End session";
+                endSessionElement.appendChild(endSessionLink);
+                sessionElement.appendChild(endSessionElement);
+            }
+
+            if (session.accessToken) {
+                const copyAccessTokenElement = document.createElement("button");
+                copyAccessTokenElement.setAttribute("onclick", "navigator.clipboard.writeText('" + session.accessToken + "').then(console.log)");
+                copyAccessTokenElement.innerText = "Copy access token to clipboard";
+                sessionElement.appendChild(copyAccessTokenElement);
+            }
+
+            if (session.apiUrl) {
+                const apiCallElement = document.createElement("a");
+                apiCallElement.setAttribute("href", session.apiUrl);
+                apiCallElement.setAttribute("target", "_blank");
+                apiCallElement.innerText = "Make API call";
+                const apiCallDiv = document.createElement("p");
+                apiCallDiv.appendChild(apiCallElement);
+                sessionElement.appendChild(apiCallDiv);
+            }
+
+            sessionsElement.appendChild(sessionElement);
         }
 
-        const usernameElement = document.createElement("p");
-        usernameElement.innerText = username;
-        sessionElement.appendChild(usernameElement);
-
-        if (session.refreshToken) {
-            const refreshElement = document.createElement("p");
-            const refreshLink = document.createElement("a");
-            refreshLink.setAttribute("href", session.controlUrl + "/refresh");
-            refreshLink.innerHTML = "Refresh session";
-            refreshElement.appendChild(refreshLink);
-            sessionElement.appendChild(refreshElement);
-        }
-
-        if (session.endSessionEndpoint) {
-            const endSessionElement = document.createElement("p");
-            const endSessionLink = document.createElement("a");
-            endSessionLink.setAttribute("href", session.endSessionEndpoint);
-            endSessionLink.innerHTML = "End session";
-            endSessionElement.appendChild(endSessionLink);
-            sessionElement.appendChild(endSessionElement);
-        }
-
-        if (session.accessToken) {
-            const copyAccessTokenElement = document.createElement("button");
-            copyAccessTokenElement.setAttribute("onclick", "navigator.clipboard.writeText('" + session.accessToken + "').then(console.log)");
-            copyAccessTokenElement.innerText = "Copy access token to clipboard";
-            sessionElement.appendChild(copyAccessTokenElement);
-        }
-
-        if (session.apiUrl) {
-            const apiCallElement = document.createElement("a");
-            apiCallElement.setAttribute("href", session.apiUrl);
-            apiCallElement.setAttribute("target", "_blank");
-            apiCallElement.innerText = "Make API call";
-            const apiCallDiv = document.createElement("p");
-            apiCallDiv.appendChild(apiCallElement);
-            sessionElement.appendChild(apiCallDiv);
-        }
-
-        sessionsElement.appendChild(sessionElement);
     }
-
-}
 </script>
 <script src="/user"></script>
-</body>
 </html>
