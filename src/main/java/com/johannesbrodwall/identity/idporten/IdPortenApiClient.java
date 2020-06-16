@@ -238,12 +238,15 @@ public class IdPortenApiClient {
 
         if (updateRequired) {
             clientObject.remove("client_orgno");
+            clientObject.put("integration_type", "idporten")
+                    .put("application_type", "web");
             try {
                 HttpURLConnection conn = connect("PUT", "clients/" + clientId);
                 write(conn, clientObject);
                 JsonNode result = JsonObject.parse(conn);
                 logger.info("PUT {} Response: {}", "clients/" + clientId, result.toIndentedJson("  "));
             } catch (JsonHttpException e) {
+                logger.info("PUT {} request: {}", "clients/" + clientId, clientObject.toIndentedJson("  "));
                 logger.error("PUT {} Error: {}{}", "clients/" + clientId, e.getErrorContent(), e.getJsonError(), e);
             }
         } else {
