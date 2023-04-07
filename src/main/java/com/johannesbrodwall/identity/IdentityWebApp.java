@@ -17,12 +17,12 @@ public class IdentityWebApp implements ServletContextListener {
     private static Map<String, String> issuerUrls = Map.of(
             "google", "https://accounts.google.com",
             "azure", "https://login.microsoftonline.com/common",
-            "idporten", "https://oidc-ver2.difi.no/idporten-oidc-provider"
+            "idporten", "https://oidc-ver1.difi.no/idporten-oidc-provider"
     );
 
     private static Map<String, String> consoleUrls = Map.of(
             "google", "https://console.developers.google.com/apis/credentials",
-            "idporten", "https://integrasjon-ver2.difi.no/swagger-ui.html",
+            "idporten", "https://selvbetjening-samarbeid-ver1.difi.no/",
             "azure", "https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade",
             "mssingle", "https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade"
     );
